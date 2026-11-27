@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-27
+
+### Added
+
+- **Contract Models Scriban Studio & QuestPDF Preview (`03855a1`)**: Added `/contracts/models`, `/contracts/models/new`, and `/contracts/models/:id` with clickable variable palette (`GET /api/v1/contract-models/variables`), custom variables tag management, Scriban syntax error feedback, `409 Conflict` reload banner, native PDF preview (`POST /api/v1/contract-models/{id}/preview`), and direct contract generation (`POST /api/v1/contracts/generate`).
+- **Contracts Management & Position Job Sheets (`94528df`)**: Added `/contracts` (server-paginated list, PDF import/generation/editing/deletion, status lifecycle `draft` / `pendingSignature` / `signed` / `archived`, inline `PdfPreviewModal` & download) and `PositionJobSheetBar` integrated into employee position cards.
+- **6-Category Employee Documents Vault & RQTH / Resident Permit Tracking (`b46d23a`)**: Added `/documents` and the employee profile `Dossier administratif` tab with 44 document types across 6 categories, ABAC hiding of `disciplinary` and `departure` without `employee-docs:read:sensitive`, self-service category restriction, conditional RQTH (`expiryDate`, `workplaceAccommodation`) and Resident Permit (`permitNumber`, `expiryDate`) forms, and expiry alert badges.
+- **Shared Controls (`03855a1`)**: Added `Textarea` primitive in `src/shared/ui/`.
+
 ## [0.3.0] - 2026-11-27
 
 ### Added
