@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { ApiError } from '@/shared/api/types';
@@ -37,6 +37,36 @@ export function TreatRseIdeaDialog({
   onOpenChange,
   onRefreshRequested,
 }: TreatRseIdeaDialogProps) {
+  return (
+    <Dialog open={Boolean(idea)} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Traiter l’idée RSE</DialogTitle>
+          <DialogDescription>{idea?.title}</DialogDescription>
+        </DialogHeader>
+
+        {idea && (
+          <TreatRseIdeaForm
+            key={`${idea.id}-${idea.rowVersion}`}
+            idea={idea}
+            onOpenChange={onOpenChange}
+            onRefreshRequested={onRefreshRequested}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TreatRseIdeaForm({
+  idea,
+  onOpenChange,
+  onRefreshRequested,
+}: {
+  idea: RseIdeaDto;
+  onOpenChange: (open: boolean) => void;
+  onRefreshRequested: () => void;
+}) {
   const treatMutation = useTreatRseIdeaMutation();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [conflictDetected, setConflictDetected] = useState(false);
@@ -44,31 +74,16 @@ export function TreatRseIdeaDialog({
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors },
   } = useForm<TreatRseIdeaFormValues>({
     resolver: zodResolver(treatRseIdeaSchema),
     defaultValues: {
-      status: 'inReview',
-      rhComment: '',
+      status: idea.status,
+      rhComment: idea.rhComment ?? '',
     },
   });
 
-  useEffect(() => {
-    if (idea) {
-      reset({
-        status: idea.status,
-        rhComment: idea.rhComment ?? '',
-      });
-      setSubmitError(null);
-      setConflictDetected(false);
-    }
-  }, [idea, reset]);
-
   const onSubmit = async (values: TreatRseIdeaFormValues) => {
-    if (!idea) {
-      return;
-    }
     setSubmitError(null);
     setConflictDetected(false);
 
@@ -93,68 +108,55 @@ export function TreatRseIdeaDialog({
   };
 
   return (
-    <Dialog open={Boolean(idea)} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Traiter l’idée RSE</DialogTitle>
-          <DialogDescription>{idea?.title}</DialogDescription>
-        </DialogHeader>
-
-        <form
-          onSubmit={(e) => {
-            handleSubmit(onSubmit)(e).catch(() => undefined);
+    <form
+      onSubmit={(e) => {
+        handleSubmit(onSubmit)(e).catch(() => undefined);
+      }}
+      className="space-y-4"
+    >
+      {conflictDetected && (
+        <ConcurrencyConflictBanner
+          onReload={() => {
+            setConflictDetected(false);
+            onRefreshRequested();
+            onOpenChange(false);
           }}
-          className="space-y-4"
-        >
-          {conflictDetected && (
-            <ConcurrencyConflictBanner
-              onReload={() => {
-                setConflictDetected(false);
-                onRefreshRequested();
-                onOpenChange(false);
-              }}
-            />
-          )}
+        />
+      )}
 
-          {submitError && (
-            <Alert variant="danger" title="Opération impossible">
-              {submitError}
-            </Alert>
-          )}
+      {submitError && (
+        <Alert variant="danger" title="Opération impossible">
+          {submitError}
+        </Alert>
+      )}
 
-          <FormField id="treat-rse-status" label="Nouveau statut" error={errors.status?.message}>
-            <Select id="treat-rse-status" {...register('status')}>
-              {RSE_STATUS_VALUES.map((st) => (
-                <option key={st} value={st}>
-                  {RSE_STATUS_LABELS[st]}
-                </option>
-              ))}
-            </Select>
-          </FormField>
+      <FormField id="treat-rse-status" label="Nouveau statut" error={errors.status?.message}>
+        <Select id="treat-rse-status" {...register('status')}>
+          {RSE_STATUS_VALUES.map((st) => (
+            <option key={st} value={st}>
+              {RSE_STATUS_LABELS[st]}
+            </option>
+          ))}
+        </Select>
+      </FormField>
 
-          <FormField
-            id="treat-rse-comment"
-            label="Commentaire RH"
-            error={errors.rhComment?.message}
-          >
-            <Textarea
-              id="treat-rse-comment"
-              rows={3}
-              placeholder="Décision, suite donnée ou motif..."
-              {...register('rhComment')}
-            />
-          </FormField>
+      <FormField id="treat-rse-comment" label="Commentaire RH" error={errors.rhComment?.message}>
+        <Textarea
+          id="treat-rse-comment"
+          rows={3}
+          placeholder="Décision, suite donnée ou motif..."
+          {...register('rhComment')}
+        />
+      </FormField>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
-            </Button>
-            <Button type="submit" isLoading={treatMutation.isPending}>
-              Enregistrer la décision
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          Annuler
+        </Button>
+        <Button type="submit" isLoading={treatMutation.isPending}>
+          Enregistrer la décision
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

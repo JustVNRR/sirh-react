@@ -31,6 +31,7 @@ export function DataTable<TData>({
   emptyTitle = 'Aucun élément trouvé',
   emptyDescription = 'Aucune donnée ne correspond aux critères actuels.',
 }: DataTableProps<TData>) {
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table v8 useReactTable is not yet React Compiler memoizable
   const table = useReactTable({
     data,
     columns,

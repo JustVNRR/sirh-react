@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useContractTypesQuery } from '@/features/organization';
@@ -41,6 +41,38 @@ export function EditContractDialog({
   onOpenChange,
   onRefreshRequested,
 }: EditContractDialogProps) {
+  return (
+    <Dialog open={Boolean(contract)} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Modifier le contrat</DialogTitle>
+          <DialogDescription>
+            Mettez à jour le statut de signature, le commentaire ou remplacez le fichier PDF.
+          </DialogDescription>
+        </DialogHeader>
+
+        {contract && (
+          <EditContractForm
+            key={`${contract.id}-${contract.rowVersion}`}
+            contract={contract}
+            onOpenChange={onOpenChange}
+            onRefreshRequested={onRefreshRequested}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditContractForm({
+  contract,
+  onOpenChange,
+  onRefreshRequested,
+}: {
+  contract: ContractDto;
+  onOpenChange: (open: boolean) => void;
+  onRefreshRequested: () => void;
+}) {
   const contractTypesQuery = useContractTypesQuery({ page: 1, pageSize: 100 });
   const updateMutation = useUpdateContractMutation();
 
@@ -51,36 +83,18 @@ export function EditContractDialog({
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors },
   } = useForm<EditContractFormValues>({
     resolver: zodResolver(editContractSchema),
     defaultValues: {
-      contractTypeId: '',
-      status: 'draft',
-      signedAt: '',
-      commentary: '',
+      contractTypeId: contract.contractTypeId,
+      status: contract.status,
+      signedAt: contract.signedAt ?? '',
+      commentary: contract.commentary ?? '',
     },
   });
 
-  useEffect(() => {
-    if (contract) {
-      reset({
-        contractTypeId: contract.contractTypeId,
-        status: contract.status,
-        signedAt: contract.signedAt ?? '',
-        commentary: contract.commentary ?? '',
-      });
-      setFile(null);
-      setSubmitError(null);
-      setConflictDetected(false);
-    }
-  }, [contract, reset]);
-
   const onSubmit = async (values: EditContractFormValues) => {
-    if (!contract) {
-      return;
-    }
     setSubmitError(null);
     setConflictDetected(false);
 
@@ -110,94 +124,83 @@ export function EditContractDialog({
   };
 
   return (
-    <Dialog open={Boolean(contract)} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Modifier le contrat</DialogTitle>
-          <DialogDescription>
-            Mettez à jour le statut de signature, le commentaire ou remplacez le fichier PDF.
-          </DialogDescription>
-        </DialogHeader>
-
-        <form
-          onSubmit={(e) => {
-            handleSubmit(onSubmit)(e).catch(() => undefined);
+    <form
+      onSubmit={(e) => {
+        handleSubmit(onSubmit)(e).catch(() => undefined);
+      }}
+      className="space-y-4"
+    >
+      {conflictDetected && (
+        <ConcurrencyConflictBanner
+          onReload={() => {
+            setConflictDetected(false);
+            onRefreshRequested();
+            onOpenChange(false);
           }}
-          className="space-y-4"
+        />
+      )}
+
+      {submitError && (
+        <Alert variant="danger" title="Mise à jour impossible">
+          {submitError}
+        </Alert>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <FormField
+          id="edit-contract-type"
+          label="Type de contrat"
+          error={errors.contractTypeId?.message}
         >
-          {conflictDetected && (
-            <ConcurrencyConflictBanner
-              onReload={() => {
-                setConflictDetected(false);
-                onRefreshRequested();
-                onOpenChange(false);
-              }}
-            />
-          )}
+          <Select id="edit-contract-type" {...register('contractTypeId')}>
+            {(contractTypesQuery.data?.items ?? []).map((ct) => (
+              <option key={ct.id} value={ct.id}>
+                {ct.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
 
-          {submitError && (
-            <Alert variant="danger" title="Mise à jour impossible">
-              {submitError}
-            </Alert>
-          )}
+        <FormField id="edit-contract-status" label="Statut" error={errors.status?.message}>
+          <Select id="edit-contract-status" {...register('status')}>
+            {CONTRACT_STATUS_VALUES.map((status) => (
+              <option key={status} value={status}>
+                {CONTRACT_STATUS_LABELS[status]}
+              </option>
+            ))}
+          </Select>
+        </FormField>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <FormField
-              id="edit-contract-type"
-              label="Type de contrat"
-              error={errors.contractTypeId?.message}
-            >
-              <Select id="edit-contract-type" {...register('contractTypeId')}>
-                {(contractTypesQuery.data?.items ?? []).map((ct) => (
-                  <option key={ct.id} value={ct.id}>
-                    {ct.label}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
+        <FormField
+          id="edit-contract-signed-at"
+          label="Date de signature"
+          error={errors.signedAt?.message}
+        >
+          <Input id="edit-contract-signed-at" type="date" {...register('signedAt')} />
+        </FormField>
+      </div>
 
-            <FormField id="edit-contract-status" label="Statut" error={errors.status?.message}>
-              <Select id="edit-contract-status" {...register('status')}>
-                {CONTRACT_STATUS_VALUES.map((status) => (
-                  <option key={status} value={status}>
-                    {CONTRACT_STATUS_LABELS[status]}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
+      <FileDropzone
+        id="edit-contract-file"
+        label="Remplacer le PDF (optionnel)"
+        file={file}
+        onFileChange={setFile}
+        allowedExtensions={['.pdf']}
+        maxBytes={MAX_FILE_SIZE_BYTES}
+      />
 
-            <FormField
-              id="edit-contract-signed-at"
-              label="Date de signature"
-              error={errors.signedAt?.message}
-            >
-              <Input id="edit-contract-signed-at" type="date" {...register('signedAt')} />
-            </FormField>
-          </div>
+      <FormField id="edit-contract-commentary" label="Commentaire">
+        <Textarea id="edit-contract-commentary" rows={2} {...register('commentary')} />
+      </FormField>
 
-          <FileDropzone
-            id="edit-contract-file"
-            label="Remplacer le PDF (optionnel)"
-            file={file}
-            onFileChange={setFile}
-            allowedExtensions={['.pdf']}
-            maxBytes={MAX_FILE_SIZE_BYTES}
-          />
-
-          <FormField id="edit-contract-commentary" label="Commentaire">
-            <Textarea id="edit-contract-commentary" rows={2} {...register('commentary')} />
-          </FormField>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
-            </Button>
-            <Button type="submit" isLoading={updateMutation.isPending}>
-              Enregistrer
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          Annuler
+        </Button>
+        <Button type="submit" isLoading={updateMutation.isPending}>
+          Enregistrer
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

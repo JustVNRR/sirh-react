@@ -1,5 +1,5 @@
 import { ArrowLeft, Globe, Plus, Save } from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCompaniesQuery } from '@/features/organization';
@@ -34,7 +34,7 @@ import {
   useQuizDetailQuery,
   useUpdateQuizMutation,
 } from '../hooks/useQuizzesQueries';
-import type { QuizQuestionInput } from '../types/quizTypes';
+import type { OnboardingQuizDetailDto, QuizQuestionInput } from '../types/quizTypes';
 
 function createEmptyQuestion(): QuizQuestionInput {
   return {
@@ -50,49 +50,119 @@ function createEmptyQuestion(): QuizQuestionInput {
 
 export function QuizBuilderPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const isEditing = Boolean(id);
   const { can } = usePermission();
   const canWrite = can(PERMISSIONS.QUIZZES_WRITE);
 
   const quizQuery = useQuizDetailQuery(id);
+
+  if (isEditing && quizQuery.isLoading) {
+    return <Spinner label="Chargement du QCM..." />;
+  }
+
+  if (isEditing && quizQuery.error) {
+    return (
+      <Alert variant="danger" title="QCM introuvable">
+        {quizQuery.error instanceof ApiError
+          ? quizQuery.error.detail
+          : 'Impossible de charger ce QCM.'}
+      </Alert>
+    );
+  }
+
+  if (isEditing && !quizQuery.data) {
+    return <Spinner label="Chargement du QCM..." />;
+  }
+
+  const quiz = quizQuery.data ?? null;
+
+  const editorForm = (
+    <QuizBuilderForm
+      key={quiz ? `${quiz.id}-${quiz.rowVersion}` : 'new'}
+      id={id}
+      quiz={quiz}
+      canWrite={canWrite}
+      onRefetch={() => {
+        quizQuery.refetch().catch(() => undefined);
+      }}
+    />
+  );
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={isEditing ? `QCM — ${quiz?.title ?? ''}` : 'Nouveau QCM d’intégration'}
+        description="Définissez les questions, les bonnes réponses et suivez les tentatives."
+        actions={
+          <Button variant="outline" asChild>
+            <Link to="/onboarding-quizzes">
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Retour aux QCM
+            </Link>
+          </Button>
+        }
+      />
+
+      {isEditing && id ? (
+        <Tabs defaultValue={canWrite ? 'edit' : 'results'}>
+          <TabsList>
+            <TabsTrigger value="edit">Édition</TabsTrigger>
+            <TabsTrigger value="results">Résultats</TabsTrigger>
+          </TabsList>
+          <TabsContent value="edit">{editorForm}</TabsContent>
+          <TabsContent value="results">
+            <QuizResultsTab quizId={id} />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        editorForm
+      )}
+    </div>
+  );
+}
+
+function QuizBuilderForm({
+  id,
+  quiz,
+  canWrite,
+  onRefetch,
+}: {
+  id: string | undefined;
+  quiz: OnboardingQuizDetailDto | null;
+  canWrite: boolean;
+  onRefetch: () => void;
+}) {
+  const navigate = useNavigate();
+  const isEditing = Boolean(id && quiz);
+
   const companiesQuery = useCompaniesQuery({ page: 1, pageSize: 100 });
   const createMutation = useCreateQuizMutation();
   const updateMutation = useUpdateQuizMutation();
   const publishMutation = usePublishQuizMutation();
 
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [companyId, setCompanyId] = useState('');
-  const [passingScorePercent, setPassingScorePercent] = useState(80);
-  const [questions, setQuestions] = useState<QuizQuestionInput[]>([createEmptyQuestion()]);
+  const [title, setTitle] = useState(() => quiz?.title ?? '');
+  const [description, setDescription] = useState(() => quiz?.description ?? '');
+  const [companyId, setCompanyId] = useState(() => quiz?.companyId ?? '');
+  const [passingScorePercent, setPassingScorePercent] = useState(
+    () => quiz?.passingScorePercent ?? 80,
+  );
+  const [questions, setQuestions] = useState<QuizQuestionInput[]>(() =>
+    quiz
+      ? quiz.questions.map((item) => ({
+          questionText: item.questionText,
+          questionType: item.questionType,
+          explanation: item.explanation ?? '',
+          orderIndex: item.orderIndex,
+          choices: item.choices.map((c) => ({
+            choiceText: c.choiceText,
+            isCorrect: Boolean(c.isCorrect),
+            orderIndex: c.orderIndex,
+          })),
+        }))
+      : [createEmptyQuestion()],
+  );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [conflictDetected, setConflictDetected] = useState(false);
-
-  useEffect(() => {
-    const q = quizQuery.data;
-    if (!q) {
-      return;
-    }
-    setTitle(q.title);
-    setDescription(q.description ?? '');
-    setCompanyId(q.companyId ?? '');
-    setPassingScorePercent(q.passingScorePercent);
-    setQuestions(
-      q.questions.map((item) => ({
-        questionText: item.questionText,
-        questionType: item.questionType,
-        explanation: item.explanation ?? '',
-        orderIndex: item.orderIndex,
-        choices: item.choices.map((c) => ({
-          choiceText: c.choiceText,
-          isCorrect: Boolean(c.isCorrect),
-          orderIndex: c.orderIndex,
-        })),
-      })),
-    );
-    setConflictDetected(false);
-  }, [quizQuery.data]);
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
@@ -118,10 +188,10 @@ export function QuizBuilderPage() {
     };
 
     try {
-      if (isEditing && id && quizQuery.data) {
+      if (isEditing && id && quiz) {
         await updateMutation.mutateAsync({
           id,
-          payload: { ...payload, rowVersion: quizQuery.data.rowVersion },
+          payload: { ...payload, rowVersion: quiz.rowVersion },
         });
         toast.success('QCM enregistré.');
       } else {
@@ -139,15 +209,15 @@ export function QuizBuilderPage() {
   };
 
   const handleTogglePublish = async () => {
-    if (!id || !quizQuery.data) {
+    if (!id || !quiz) {
       return;
     }
     setSubmitError(null);
     try {
-      const nextPublished = !quizQuery.data.isPublished;
+      const nextPublished = !quiz.isPublished;
       await publishMutation.mutateAsync({
         id,
-        payload: { isPublished: nextPublished, rowVersion: quizQuery.data.rowVersion },
+        payload: { isPublished: nextPublished, rowVersion: quiz.rowVersion },
       });
       toast.success(nextPublished ? 'QCM publié !' : 'QCM repassé en brouillon.');
     } catch (error) {
@@ -161,21 +231,7 @@ export function QuizBuilderPage() {
     }
   };
 
-  if (isEditing && quizQuery.isLoading) {
-    return <Spinner label="Chargement du QCM..." />;
-  }
-
-  if (isEditing && quizQuery.error) {
-    return (
-      <Alert variant="danger" title="QCM introuvable">
-        {quizQuery.error instanceof ApiError
-          ? quizQuery.error.detail
-          : 'Impossible de charger ce QCM.'}
-      </Alert>
-    );
-  }
-
-  const isPublished = quizQuery.data?.isPublished ?? false;
+  const isPublished = quiz?.isPublished ?? false;
 
   const handleUpdateQuestion = (targetIdx: number, next: QuizQuestionInput) => {
     setQuestions((prev) => prev.map((q, qIdx) => (qIdx === targetIdx ? next : q)));
@@ -185,7 +241,7 @@ export function QuizBuilderPage() {
     setQuestions((prev) => prev.filter((_, qIdx) => qIdx !== targetIdx));
   };
 
-  const editorForm = (
+  return (
     <form
       onSubmit={(e) => {
         handleSave(e).catch(() => undefined);
@@ -196,7 +252,7 @@ export function QuizBuilderPage() {
         <ConcurrencyConflictBanner
           onReload={() => {
             setConflictDetected(false);
-            quizQuery.refetch().catch(() => undefined);
+            onRefetch();
           }}
         />
       )}
@@ -323,37 +379,5 @@ export function QuizBuilderPage() {
         </div>
       )}
     </form>
-  );
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title={isEditing ? `QCM — ${quizQuery.data?.title ?? ''}` : 'Nouveau QCM d’intégration'}
-        description="Définissez les questions, les bonnes réponses et suivez les tentatives."
-        actions={
-          <Button variant="outline" asChild>
-            <Link to="/onboarding-quizzes">
-              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              Retour aux QCM
-            </Link>
-          </Button>
-        }
-      />
-
-      {isEditing && id ? (
-        <Tabs defaultValue={canWrite ? 'edit' : 'results'}>
-          <TabsList>
-            <TabsTrigger value="edit">Édition</TabsTrigger>
-            <TabsTrigger value="results">Résultats</TabsTrigger>
-          </TabsList>
-          <TabsContent value="edit">{editorForm}</TabsContent>
-          <TabsContent value="results">
-            <QuizResultsTab quizId={id} />
-          </TabsContent>
-        </Tabs>
-      ) : (
-        editorForm
-      )}
-    </div>
   );
 }

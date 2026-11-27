@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LogOut, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ApiError } from '@/shared/api/types';
@@ -33,7 +33,7 @@ export function AccountSecurityPage() {
 
   const {
     register,
-    watch,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<ChangePasswordFormValues>({
@@ -45,7 +45,7 @@ export function AccountSecurityPage() {
     },
   });
 
-  const watchedPassword = watch('newPassword');
+  const watchedPassword = useWatch({ control, name: 'newPassword', defaultValue: '' });
 
   const onSubmit = async (values: ChangePasswordFormValues) => {
     setServerError(null);

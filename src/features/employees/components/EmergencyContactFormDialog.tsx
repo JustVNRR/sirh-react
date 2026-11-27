@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { ApiError } from '@/shared/api/types';
@@ -47,6 +47,45 @@ export function EmergencyContactFormDialog({
   defaultPriority = 1,
 }: EmergencyContactFormDialogProps) {
   const isEditing = Boolean(contact);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? "Modifier le contact d'urgence" : "Ajouter un contact d'urgence"}
+          </DialogTitle>
+          <DialogDescription>
+            Ces données sont chiffrées en base (maximum 2 contacts par collaborateur).
+          </DialogDescription>
+        </DialogHeader>
+
+        {open && (
+          <EmergencyContactForm
+            key={`${contact?.id ?? 'new'}-${contact?.rowVersion ?? ''}-${defaultPriority}`}
+            onOpenChange={onOpenChange}
+            employeeId={employeeId}
+            contact={contact}
+            defaultPriority={defaultPriority}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EmergencyContactForm({
+  onOpenChange,
+  employeeId,
+  contact,
+  defaultPriority,
+}: {
+  onOpenChange: (open: boolean) => void;
+  employeeId: string;
+  contact: EmergencyContactDto | null;
+  defaultPriority: number;
+}) {
+  const isEditing = Boolean(contact);
   const createMutation = useCreateEmergencyContactMutation(employeeId);
   const updateMutation = useUpdateEmergencyContactMutation(employeeId);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -54,33 +93,18 @@ export function EmergencyContactFormDialog({
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors, isSubmitting },
   } = useForm<EmergencyContactFormValues>({
     resolver: zodResolver(emergencyContactSchema),
     defaultValues: {
-      fullName: '',
-      relationship: '',
-      priorityOrder: defaultPriority,
-      mobilePhone: '',
-      homePhone: '',
-      workPhone: '',
+      fullName: contact?.fullName ?? '',
+      relationship: contact?.relationship ?? '',
+      priorityOrder: contact?.priorityOrder ?? defaultPriority,
+      mobilePhone: contact?.mobilePhone ?? '',
+      homePhone: contact?.homePhone ?? '',
+      workPhone: contact?.workPhone ?? '',
     },
   });
-
-  useEffect(() => {
-    if (open) {
-      reset({
-        fullName: contact?.fullName ?? '',
-        relationship: contact?.relationship ?? '',
-        priorityOrder: contact?.priorityOrder ?? defaultPriority,
-        mobilePhone: contact?.mobilePhone ?? '',
-        homePhone: contact?.homePhone ?? '',
-        workPhone: contact?.workPhone ?? '',
-      });
-      setServerError(null);
-    }
-  }, [open, contact, defaultPriority, reset]);
 
   const onSubmit = async (values: EmergencyContactFormValues) => {
     setServerError(null);
@@ -113,81 +137,63 @@ export function EmergencyContactFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Modifier le contact d'urgence" : "Ajouter un contact d'urgence"}
-          </DialogTitle>
-          <DialogDescription>
-            Ces données sont chiffrées en base (maximum 2 contacts par collaborateur).
-          </DialogDescription>
-        </DialogHeader>
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-4" noValidate>
+      {serverError && (
+        <Alert variant="danger" title="Erreur">
+          {serverError}
+        </Alert>
+      )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-4" noValidate>
-          {serverError && (
-            <Alert variant="danger" title="Erreur">
-              {serverError}
-            </Alert>
-          )}
+      <FormField id="ec-fullName" label="Nom complet" required error={errors.fullName?.message}>
+        <Input id="ec-fullName" hasError={Boolean(errors.fullName)} {...register('fullName')} />
+      </FormField>
 
-          <FormField id="ec-fullName" label="Nom complet" required error={errors.fullName?.message}>
-            <Input id="ec-fullName" hasError={Boolean(errors.fullName)} {...register('fullName')} />
-          </FormField>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField
+          id="ec-relationship"
+          label="Lien de parenté"
+          required
+          error={errors.relationship?.message}
+        >
+          <Input
+            id="ec-relationship"
+            placeholder="Conjoint, Parent..."
+            hasError={Boolean(errors.relationship)}
+            {...register('relationship')}
+          />
+        </FormField>
+        <FormField id="ec-priority" label="Priorité" required error={errors.priorityOrder?.message}>
+          <Select id="ec-priority" {...register('priorityOrder', { valueAsNumber: true })}>
+            <option value={1}>1 (Principal)</option>
+            <option value={2}>2 (Secondaire)</option>
+          </Select>
+        </FormField>
+      </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField
-              id="ec-relationship"
-              label="Lien de parenté"
-              required
-              error={errors.relationship?.message}
-            >
-              <Input
-                id="ec-relationship"
-                placeholder="Conjoint, Parent..."
-                hasError={Boolean(errors.relationship)}
-                {...register('relationship')}
-              />
-            </FormField>
-            <FormField
-              id="ec-priority"
-              label="Priorité"
-              required
-              error={errors.priorityOrder?.message}
-            >
-              <Select id="ec-priority" {...register('priorityOrder', { valueAsNumber: true })}>
-                <option value={1}>1 (Principal)</option>
-                <option value={2}>2 (Secondaire)</option>
-              </Select>
-            </FormField>
-          </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <FormField id="ec-mobile" label="Mobile" error={errors.mobilePhone?.message}>
+          <Input
+            id="ec-mobile"
+            hasError={Boolean(errors.mobilePhone)}
+            {...register('mobilePhone')}
+          />
+        </FormField>
+        <FormField id="ec-home" label="Domicile" error={errors.homePhone?.message}>
+          <Input id="ec-home" {...register('homePhone')} />
+        </FormField>
+        <FormField id="ec-work" label="Professionnel" error={errors.workPhone?.message}>
+          <Input id="ec-work" {...register('workPhone')} />
+        </FormField>
+      </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <FormField id="ec-mobile" label="Mobile" error={errors.mobilePhone?.message}>
-              <Input
-                id="ec-mobile"
-                hasError={Boolean(errors.mobilePhone)}
-                {...register('mobilePhone')}
-              />
-            </FormField>
-            <FormField id="ec-home" label="Domicile" error={errors.homePhone?.message}>
-              <Input id="ec-home" {...register('homePhone')} />
-            </FormField>
-            <FormField id="ec-work" label="Professionnel" error={errors.workPhone?.message}>
-              <Input id="ec-work" {...register('workPhone')} />
-            </FormField>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-              Annuler
-            </Button>
-            <Button type="submit" isLoading={isSubmitting}>
-              {isEditing ? 'Enregistrer' : 'Ajouter'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+          Annuler
+        </Button>
+        <Button type="submit" isLoading={isSubmitting}>
+          {isEditing ? 'Enregistrer' : 'Ajouter'}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

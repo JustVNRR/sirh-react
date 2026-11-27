@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { ApiError } from '@/shared/api/types';
@@ -40,6 +40,43 @@ export function JobSheetFormDialog({
   onRefreshRequested,
 }: JobSheetFormDialogProps) {
   const isEditing = Boolean(jobSheet);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? `Mettre à jour la fiche de poste` : `Ajouter une fiche de poste`}
+          </DialogTitle>
+          <DialogDescription>Poste : {positionTitle} (format PDF, max 20 Mo).</DialogDescription>
+        </DialogHeader>
+
+        {open && (
+          <JobSheetForm
+            key={`${positionId}-${jobSheet?.id ?? 'new'}-${jobSheet?.rowVersion ?? ''}`}
+            onOpenChange={onOpenChange}
+            positionId={positionId}
+            jobSheet={jobSheet}
+            onRefreshRequested={onRefreshRequested}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function JobSheetForm({
+  onOpenChange,
+  positionId,
+  jobSheet,
+  onRefreshRequested,
+}: {
+  onOpenChange: (open: boolean) => void;
+  positionId: string;
+  jobSheet: JobSheetDto | null;
+  onRefreshRequested: () => void;
+}) {
+  const isEditing = Boolean(jobSheet);
   const createMutation = useCreateJobSheetMutation();
   const updateMutation = useUpdateJobSheetMutation();
 
@@ -51,22 +88,11 @@ export function JobSheetFormDialog({
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors },
   } = useForm<JobSheetFormValues>({
     resolver: zodResolver(jobSheetSchema),
-    defaultValues: { commentary: '' },
+    defaultValues: { commentary: jobSheet?.commentary ?? '' },
   });
-
-  useEffect(() => {
-    if (open) {
-      reset({ commentary: jobSheet?.commentary ?? '' });
-      setFile(null);
-      setFileError(undefined);
-      setSubmitError(null);
-      setConflictDetected(false);
-    }
-  }, [open, jobSheet, reset]);
 
   const onSubmit = async (values: JobSheetFormValues) => {
     if (!isEditing && !file) {
@@ -109,74 +135,57 @@ export function JobSheetFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? `Mettre à jour la fiche de poste` : `Ajouter une fiche de poste`}
-          </DialogTitle>
-          <DialogDescription>Poste : {positionTitle} (format PDF, max 20 Mo).</DialogDescription>
-        </DialogHeader>
-
-        <form
-          onSubmit={(e) => {
-            handleSubmit(onSubmit)(e).catch(() => undefined);
+    <form
+      onSubmit={(e) => {
+        handleSubmit(onSubmit)(e).catch(() => undefined);
+      }}
+      className="space-y-4"
+    >
+      {conflictDetected && (
+        <ConcurrencyConflictBanner
+          onReload={() => {
+            setConflictDetected(false);
+            onRefreshRequested();
+            onOpenChange(false);
           }}
-          className="space-y-4"
-        >
-          {conflictDetected && (
-            <ConcurrencyConflictBanner
-              onReload={() => {
-                setConflictDetected(false);
-                onRefreshRequested();
-                onOpenChange(false);
-              }}
-            />
-          )}
+        />
+      )}
 
-          {submitError && (
-            <Alert variant="danger" title="Enregistrement impossible">
-              {submitError}
-            </Alert>
-          )}
+      {submitError && (
+        <Alert variant="danger" title="Enregistrement impossible">
+          {submitError}
+        </Alert>
+      )}
 
-          <FileDropzone
-            id={`jobsheet-file-${positionId}`}
-            label={
-              isEditing ? 'Remplacer le PDF (optionnel)' : 'Sélectionner la fiche de poste PDF'
-            }
-            file={file}
-            onFileChange={(next) => {
-              setFile(next);
-              setFileError(undefined);
-            }}
-            allowedExtensions={['.pdf']}
-            maxBytes={MAX_FILE_SIZE_BYTES}
-            error={fileError}
-          />
+      <FileDropzone
+        id={`jobsheet-file-${positionId}`}
+        label={isEditing ? 'Remplacer le PDF (optionnel)' : 'Sélectionner la fiche de poste PDF'}
+        file={file}
+        onFileChange={(next) => {
+          setFile(next);
+          setFileError(undefined);
+        }}
+        allowedExtensions={['.pdf']}
+        maxBytes={MAX_FILE_SIZE_BYTES}
+        error={fileError}
+      />
 
-          <FormField
-            id={`jobsheet-commentary-${positionId}`}
-            label="Commentaire"
-            error={errors.commentary?.message}
-          >
-            <Textarea
-              id={`jobsheet-commentary-${positionId}`}
-              rows={2}
-              {...register('commentary')}
-            />
-          </FormField>
+      <FormField
+        id={`jobsheet-commentary-${positionId}`}
+        label="Commentaire"
+        error={errors.commentary?.message}
+      >
+        <Textarea id={`jobsheet-commentary-${positionId}`} rows={2} {...register('commentary')} />
+      </FormField>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
-            </Button>
-            <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
-              {isEditing ? 'Mettre à jour' : 'Enregistrer'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          Annuler
+        </Button>
+        <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
+          {isEditing ? 'Mettre à jour' : 'Enregistrer'}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
