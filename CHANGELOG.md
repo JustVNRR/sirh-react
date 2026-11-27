@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-27
+
+### Added
+
+- **Common Documents Library & Welcome Kits (`aad24a4`)**: Added `/internal-life/documents` (19 categories, active/archived filters, `PATCH /api/v1/common-documents/{id}/archive` with `rowVersion`, `PdfPreviewModal` & download, strict CSE write scoping for `common-docs:write:cse` to `csePv`, `cseBde`, and `harassmentBestPractices`) and `/internal-life/welcome-kits` (filterable by `contractTypeId` with universal kit support).
+- **CSE Staff Representatives Directory (`590bfe4`)**: Added `/internal-life/staff-representatives` with company/role/search filters, `"Référents harcèlement uniquement"` filter (`harassmentAdvisor=true`), prominent advisor badges, and `staff-reps:write` CRUD dialogs.
+- **RSE Idea Box (`590bfe4`)**: Added `/internal-life/rse-ideas` supporting optional attachments (`/file` preview & download), author edit/delete restricted to `submitted` status, and HR review workflow (`PATCH /api/v1/rse-ideas/{id}/status`) with `rhComment`.
+
 ## [0.5.0] - 2026-11-27
 
 ### Added
