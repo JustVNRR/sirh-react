@@ -1,4 +1,8 @@
-export { useDepartmentsQuery } from './hooks/useOrganizationQueries';
+export {
+  useCompaniesQuery,
+  useDepartmentsQuery,
+  useLocationsQuery,
+} from './hooks/useOrganizationQueries';
 export { CompaniesPage } from './pages/CompaniesPage';
 export { ContractTypesPage } from './pages/ContractTypesPage';
 export { LocationsPage } from './pages/LocationsPage';

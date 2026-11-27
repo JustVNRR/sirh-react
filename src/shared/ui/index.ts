@@ -30,3 +30,4 @@ export { PdfPreviewModal, type PdfPreviewModalProps } from './PdfPreviewModal';
 export { Select, type SelectProps } from './Select';
 export { Skeleton } from './Skeleton';
 export { Spinner, type SpinnerProps } from './Spinner';
+export { Tabs, TabsContent, TabsList, TabsTrigger } from './Tabs';

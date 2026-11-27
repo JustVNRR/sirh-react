@@ -6,6 +6,12 @@ import {
   ResetPasswordPage,
 } from '@/features/auth';
 import { DashboardPage } from '@/features/dashboard';
+import {
+  EmployeeDetailPage,
+  EmployeeFormPage,
+  EmployeesDirectoryPage,
+  MySpacePage,
+} from '@/features/employees';
 import { CompaniesPage, ContractTypesPage, LocationsPage } from '@/features/organization';
 import { RolesPermissionsPage } from '@/features/roles';
 import { PERMISSIONS } from '@/shared/auth/permissions';
@@ -80,7 +86,7 @@ export function createAppRoutes(): RouteObject[] {
               path: '/me',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.EMPLOYEES_READ_SELF]}>
-                  <ModulePlannedPage title="Mon Espace" sprint="Sprint 2" />
+                  <MySpacePage />
                 </RequirePermission>
               ),
             },
@@ -90,7 +96,37 @@ export function createAppRoutes(): RouteObject[] {
                 <RequirePermission
                   anyOf={[PERMISSIONS.EMPLOYEES_READ_TEAM, PERMISSIONS.EMPLOYEES_READ_ALL]}
                 >
-                  <ModulePlannedPage title="Collaborateurs" sprint="Sprint 2" />
+                  <EmployeesDirectoryPage />
+                </RequirePermission>
+              ),
+            },
+            {
+              path: '/employees/new',
+              element: (
+                <RequirePermission anyOf={[PERMISSIONS.EMPLOYEES_WRITE]}>
+                  <EmployeeFormPage />
+                </RequirePermission>
+              ),
+            },
+            {
+              path: '/employees/:id',
+              element: (
+                <RequirePermission
+                  anyOf={[
+                    PERMISSIONS.EMPLOYEES_READ_SELF,
+                    PERMISSIONS.EMPLOYEES_READ_TEAM,
+                    PERMISSIONS.EMPLOYEES_READ_ALL,
+                  ]}
+                >
+                  <EmployeeDetailPage />
+                </RequirePermission>
+              ),
+            },
+            {
+              path: '/employees/:id/edit',
+              element: (
+                <RequirePermission anyOf={[PERMISSIONS.EMPLOYEES_WRITE]}>
+                  <EmployeeFormPage />
                 </RequirePermission>
               ),
             },
