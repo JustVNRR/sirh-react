@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCompaniesQuery, useDepartmentsQuery } from '@/features/organization';
@@ -133,7 +133,7 @@ export function EmployeeFormPage() {
   const schema = isEditing ? updateEmployeeSchema : createEmployeeSchema;
   const {
     register,
-    watch,
+    control,
     setValue,
     reset,
     handleSubmit,
@@ -149,8 +149,8 @@ export function EmployeeFormPage() {
     }
   }, [isEditing, detailQuery.data, reset]);
 
-  const selectedRoles = watch('roleCodes');
-  const selectedDepartments = watch('departments');
+  const selectedRoles = useWatch({ control, name: 'roleCodes', defaultValue: ['EMPLOYEE'] });
+  const selectedDepartments = useWatch({ control, name: 'departments', defaultValue: [] });
 
   const toggleSelection = (field: 'roleCodes' | 'departments', code: string) => {
     const current = field === 'roleCodes' ? selectedRoles : selectedDepartments;

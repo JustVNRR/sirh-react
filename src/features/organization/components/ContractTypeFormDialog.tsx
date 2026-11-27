@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { ApiError } from '@/shared/api/types';
@@ -36,6 +36,42 @@ export function ContractTypeFormDialog({
 }: ContractTypeFormDialogProps) {
   const isEditing = Boolean(contractType);
   const isSystem = contractType?.isSystem ?? false;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? `Modifier ${contractType?.code}` : 'Nouveau type de contrat'}
+          </DialogTitle>
+          <DialogDescription>
+            {isSystem
+              ? 'Ce type est protégé par le système : seul son libellé ou son statut actif peut être ajusté.'
+              : 'Définissez le code unique et le libellé du type de contrat.'}
+          </DialogDescription>
+        </DialogHeader>
+
+        {open && (
+          <ContractTypeForm
+            key={`${contractType?.id ?? 'new'}-${contractType?.rowVersion ?? ''}`}
+            onOpenChange={onOpenChange}
+            contractType={contractType}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ContractTypeForm({
+  onOpenChange,
+  contractType,
+}: {
+  onOpenChange: (open: boolean) => void;
+  contractType: ContractTypeDto | null;
+}) {
+  const isEditing = Boolean(contractType);
+  const isSystem = contractType?.isSystem ?? false;
   const createMutation = useCreateContractTypeMutation();
   const updateMutation = useUpdateContractTypeMutation();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -43,27 +79,15 @@ export function ContractTypeFormDialog({
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors, isSubmitting },
   } = useForm<ContractTypeFormValues>({
     resolver: zodResolver(contractTypeSchema),
     defaultValues: {
-      code: '',
-      label: '',
-      isActive: true,
+      code: contractType?.code ?? '',
+      label: contractType?.label ?? '',
+      isActive: contractType?.isActive ?? true,
     },
   });
-
-  useEffect(() => {
-    if (open) {
-      reset({
-        code: contractType?.code ?? '',
-        label: contractType?.label ?? '',
-        isActive: contractType?.isActive ?? true,
-      });
-      setServerError(null);
-    }
-  }, [open, contractType, reset]);
 
   const onSubmit = async (values: ContractTypeFormValues) => {
     setServerError(null);
@@ -96,58 +120,43 @@ export function ContractTypeFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? `Modifier ${contractType?.code}` : 'Nouveau type de contrat'}
-          </DialogTitle>
-          <DialogDescription>
-            {isSystem
-              ? 'Ce type est protégé par le système : seul son libellé ou son statut actif peut être ajusté.'
-              : 'Définissez le code unique et le libellé du type de contrat.'}
-          </DialogDescription>
-        </DialogHeader>
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-4" noValidate>
+      {serverError && (
+        <Alert variant="danger" title="Erreur">
+          {serverError}
+        </Alert>
+      )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-4" noValidate>
-          {serverError && (
-            <Alert variant="danger" title="Erreur">
-              {serverError}
-            </Alert>
-          )}
+      <FormField
+        id="ct-code"
+        label="Code"
+        required
+        hint={isSystem ? 'Code système immuable.' : 'Lettres, chiffres, _ ou -.'}
+        error={errors.code?.message}
+      >
+        <Input
+          id="ct-code"
+          className="font-mono uppercase"
+          disabled={isSystem}
+          hasError={Boolean(errors.code)}
+          {...register('code')}
+        />
+      </FormField>
 
-          <FormField
-            id="ct-code"
-            label="Code"
-            required
-            hint={isSystem ? 'Code système immuable.' : 'Lettres, chiffres, _ ou -.'}
-            error={errors.code?.message}
-          >
-            <Input
-              id="ct-code"
-              className="font-mono uppercase"
-              disabled={isSystem}
-              hasError={Boolean(errors.code)}
-              {...register('code')}
-            />
-          </FormField>
+      <FormField id="ct-label" label="Libellé" required error={errors.label?.message}>
+        <Input id="ct-label" hasError={Boolean(errors.label)} {...register('label')} />
+      </FormField>
 
-          <FormField id="ct-label" label="Libellé" required error={errors.label?.message}>
-            <Input id="ct-label" hasError={Boolean(errors.label)} {...register('label')} />
-          </FormField>
+      <Checkbox id="ct-isActive" label="Type de contrat actif" {...register('isActive')} />
 
-          <Checkbox id="ct-isActive" label="Type de contrat actif" {...register('isActive')} />
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-              Annuler
-            </Button>
-            <Button type="submit" isLoading={isSubmitting}>
-              {isEditing ? 'Enregistrer' : 'Créer'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+          Annuler
+        </Button>
+        <Button type="submit" isLoading={isSubmitting}>
+          {isEditing ? 'Enregistrer' : 'Créer'}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

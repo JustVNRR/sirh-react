@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ApiError } from '@/shared/api/types';
@@ -27,7 +27,7 @@ export function ResetPasswordPage() {
 
   const {
     register,
-    watch,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordFormValues>({
@@ -40,7 +40,7 @@ export function ResetPasswordPage() {
     },
   });
 
-  const watchedPassword = watch('newPassword');
+  const watchedPassword = useWatch({ control, name: 'newPassword', defaultValue: '' });
 
   const onSubmit = async (values: ResetPasswordFormValues) => {
     setServerError(null);

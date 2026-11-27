@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useCompaniesQuery, useContractTypesQuery } from '@/features/organization';
 import { ApiError } from '@/shared/api/types';
@@ -54,6 +54,49 @@ export function CommonDocumentFormDialog({
   welcomeKitMode = false,
   onRefreshRequested,
 }: CommonDocumentFormDialogProps) {
+  const isEditing = Boolean(document);
+  let dialogTitle = 'Publier un document commun';
+  if (isEditing) {
+    dialogTitle = 'Modifier le document';
+  } else if (welcomeKitMode) {
+    dialogTitle = 'Ajouter un kit d’accueil';
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{dialogTitle}</DialogTitle>
+          <DialogDescription>
+            Formats acceptés : PDF, PNG, JPG, JPEG, WebP (20 Mo maximum).
+          </DialogDescription>
+        </DialogHeader>
+
+        {open && (
+          <CommonDocumentForm
+            key={`${document?.id ?? 'new'}-${document?.rowVersion ?? ''}-${String(welcomeKitMode)}`}
+            onOpenChange={onOpenChange}
+            document={document}
+            welcomeKitMode={welcomeKitMode}
+            onRefreshRequested={onRefreshRequested}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CommonDocumentForm({
+  onOpenChange,
+  document,
+  welcomeKitMode,
+  onRefreshRequested,
+}: {
+  onOpenChange: (open: boolean) => void;
+  document: CommonDocumentDto | null;
+  welcomeKitMode: boolean;
+  onRefreshRequested: () => void;
+}) {
   const { can } = usePermission();
   const canWriteAll = can(PERMISSIONS.COMMON_DOCS_WRITE);
   const canWriteCse = can(PERMISSIONS.COMMON_DOCS_WRITE_CSE);
@@ -82,56 +125,38 @@ export function CommonDocumentFormDialog({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
-    reset,
     formState: { errors },
   } = useForm<CommonDocumentFormValues>({
     resolver: zodResolver(commonDocumentSchema),
-    defaultValues: {
-      title: '',
-      category: defaultCategory,
-      companyId: '',
-      contractTypeId: '',
-      isWelcomeKit: welcomeKitMode,
-      description: '',
-      fileDate: '',
-    },
+    defaultValues: document
+      ? {
+          title: document.title,
+          category: document.category,
+          companyId: document.companyId ?? '',
+          contractTypeId: document.contractTypeId ?? '',
+          isWelcomeKit: document.isWelcomeKit,
+          description: document.description ?? '',
+          fileDate: document.fileDate,
+        }
+      : {
+          title: '',
+          category: defaultCategory,
+          companyId: '',
+          contractTypeId: '',
+          isWelcomeKit: welcomeKitMode,
+          description: '',
+          fileDate: '',
+        },
   });
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    if (document) {
-      reset({
-        title: document.title,
-        category: document.category,
-        companyId: document.companyId ?? '',
-        contractTypeId: document.contractTypeId ?? '',
-        isWelcomeKit: document.isWelcomeKit,
-        description: document.description ?? '',
-        fileDate: document.fileDate,
-      });
-    } else {
-      reset({
-        title: '',
-        category: defaultCategory,
-        companyId: '',
-        contractTypeId: '',
-        isWelcomeKit: welcomeKitMode,
-        description: '',
-        fileDate: '',
-      });
-    }
-    setFile(null);
-    setFileError(undefined);
-    setSubmitError(null);
-    setConflictDetected(false);
-  }, [open, document, welcomeKitMode, defaultCategory, reset]);
-
-  const selectedCategory = watch('category');
-  const isWelcomeKit = watch('isWelcomeKit');
+  const selectedCategory = useWatch({ control, name: 'category', defaultValue: defaultCategory });
+  const isWelcomeKit = useWatch({
+    control,
+    name: 'isWelcomeKit',
+    defaultValue: document?.isWelcomeKit ?? welcomeKitMode,
+  });
 
   const onSubmit = async (values: CommonDocumentFormValues) => {
     if (!isEditing && !file) {
@@ -175,138 +200,120 @@ export function CommonDocumentFormDialog({
     }
   };
 
-  let dialogTitle = 'Publier un document commun';
-  if (isEditing) {
-    dialogTitle = 'Modifier le document';
-  } else if (welcomeKitMode) {
-    dialogTitle = 'Ajouter un kit d’accueil';
-  }
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>
-            Formats acceptés : PDF, PNG, JPG, JPEG, WebP (20 Mo maximum).
-          </DialogDescription>
-        </DialogHeader>
-
-        <form
-          onSubmit={(e) => {
-            handleSubmit(onSubmit)(e).catch(() => undefined);
+    <form
+      onSubmit={(e) => {
+        handleSubmit(onSubmit)(e).catch(() => undefined);
+      }}
+      className="space-y-4"
+    >
+      {conflictDetected && (
+        <ConcurrencyConflictBanner
+          onReload={() => {
+            setConflictDetected(false);
+            onRefreshRequested();
+            onOpenChange(false);
           }}
-          className="space-y-4"
-        >
-          {conflictDetected && (
-            <ConcurrencyConflictBanner
-              onReload={() => {
-                setConflictDetected(false);
-                onRefreshRequested();
-                onOpenChange(false);
-              }}
-            />
-          )}
+        />
+      )}
 
-          {submitError && (
-            <Alert variant="danger" title="Opération impossible">
-              {submitError}
-            </Alert>
-          )}
+      {submitError && (
+        <Alert variant="danger" title="Opération impossible">
+          {submitError}
+        </Alert>
+      )}
 
-          <FormField id="cdoc-title" label="Titre *" error={errors.title?.message}>
-            <Input id="cdoc-title" {...register('title')} />
-          </FormField>
+      <FormField id="cdoc-title" label="Titre *" error={errors.title?.message}>
+        <Input id="cdoc-title" {...register('title')} />
+      </FormField>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField id="cdoc-category" label="Catégorie *" error={errors.category?.message}>
-              <Select
-                id="cdoc-category"
-                value={selectedCategory}
-                onChange={(e) => {
-                  const next = e.target.value as CommonDocumentCategory;
-                  setValue('category', next);
-                  if (isWelcomeKitCategory(next)) {
-                    setValue('isWelcomeKit', true);
-                  }
-                }}
-              >
-                {writableCategories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {COMMON_DOCUMENT_CATEGORY_LABELS[cat]}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-
-            <FormField id="cdoc-company" label="Entreprise (optionnel)">
-              <Select id="cdoc-company" {...register('companyId')}>
-                <option value="">Toutes les entreprises</option>
-                {(companiesQuery.data?.items ?? []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            {(welcomeKitMode || isWelcomeKit) && (
-              <FormField id="cdoc-contract-type" label="Type de contrat ciblé">
-                <Select id="cdoc-contract-type" {...register('contractTypeId')}>
-                  <option value="">Universel (tous contrats)</option>
-                  {(contractTypesQuery.data?.items ?? []).map((ct) => (
-                    <option key={ct.id} value={ct.id}>
-                      {ct.label} ({ct.code})
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-            )}
-
-            <FormField id="cdoc-date" label="Date du document">
-              <Input id="cdoc-date" type="date" {...register('fileDate')} />
-            </FormField>
-          </div>
-
-          {!welcomeKitMode && (
-            <label
-              htmlFor="cdoc-is-welcome-kit"
-              className="flex items-center gap-2 text-sm text-[var(--foreground)]"
-            >
-              <Checkbox id="cdoc-is-welcome-kit" {...register('isWelcomeKit')} />
-              Inclure également dans les Kits d’accueil
-            </label>
-          )}
-
-          <FileDropzone
-            id="cdoc-file"
-            label={isEditing ? 'Remplacer le fichier (optionnel)' : 'Sélectionner un fichier *'}
-            file={file}
-            onFileChange={(next) => {
-              setFile(next);
-              setFileError(undefined);
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField id="cdoc-category" label="Catégorie *" error={errors.category?.message}>
+          <Select
+            id="cdoc-category"
+            value={selectedCategory}
+            onChange={(e) => {
+              const next = e.target.value as CommonDocumentCategory;
+              setValue('category', next);
+              if (isWelcomeKitCategory(next)) {
+                setValue('isWelcomeKit', true);
+              }
             }}
-            allowedExtensions={ALLOWED_DOCUMENT_EXTENSIONS}
-            maxBytes={MAX_FILE_SIZE_BYTES}
-            error={fileError}
-          />
+          >
+            {writableCategories.map((cat) => (
+              <option key={cat} value={cat}>
+                {COMMON_DOCUMENT_CATEGORY_LABELS[cat]}
+              </option>
+            ))}
+          </Select>
+        </FormField>
 
-          <FormField id="cdoc-description" label="Description" error={errors.description?.message}>
-            <Textarea id="cdoc-description" rows={2} {...register('description')} />
+        <FormField id="cdoc-company" label="Entreprise (optionnel)">
+          <Select id="cdoc-company" {...register('companyId')}>
+            <option value="">Toutes les entreprises</option>
+            {(companiesQuery.data?.items ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {(welcomeKitMode || isWelcomeKit) && (
+          <FormField id="cdoc-contract-type" label="Type de contrat ciblé">
+            <Select id="cdoc-contract-type" {...register('contractTypeId')}>
+              <option value="">Universel (tous contrats)</option>
+              {(contractTypesQuery.data?.items ?? []).map((ct) => (
+                <option key={ct.id} value={ct.id}>
+                  {ct.label} ({ct.code})
+                </option>
+              ))}
+            </Select>
           </FormField>
+        )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
-            </Button>
-            <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
-              {isEditing ? 'Enregistrer' : 'Publier'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <FormField id="cdoc-date" label="Date du document">
+          <Input id="cdoc-date" type="date" {...register('fileDate')} />
+        </FormField>
+      </div>
+
+      {!welcomeKitMode && (
+        <label
+          htmlFor="cdoc-is-welcome-kit"
+          className="flex items-center gap-2 text-sm text-[var(--foreground)]"
+        >
+          <Checkbox id="cdoc-is-welcome-kit" {...register('isWelcomeKit')} />
+          Inclure également dans les Kits d’accueil
+        </label>
+      )}
+
+      <FileDropzone
+        id="cdoc-file"
+        label={isEditing ? 'Remplacer le fichier (optionnel)' : 'Sélectionner un fichier *'}
+        file={file}
+        onFileChange={(next) => {
+          setFile(next);
+          setFileError(undefined);
+        }}
+        allowedExtensions={ALLOWED_DOCUMENT_EXTENSIONS}
+        maxBytes={MAX_FILE_SIZE_BYTES}
+        error={fileError}
+      />
+
+      <FormField id="cdoc-description" label="Description" error={errors.description?.message}>
+        <Textarea id="cdoc-description" rows={2} {...register('description')} />
+      </FormField>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          Annuler
+        </Button>
+        <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
+          {isEditing ? 'Enregistrer' : 'Publier'}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

@@ -1,5 +1,5 @@
 import { Lock, RotateCcw, Save, ShieldCheck } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ApiError } from '@/shared/api/types';
 import { useAuth, usePermission } from '@/shared/auth/AuthContext';
@@ -66,20 +66,22 @@ export function RolesPermissionsPage() {
   const effectiveRoleId = selectedRoleId ?? sortedRoles[0]?.id ?? null;
 
   const roleDetailQuery = useRolePermissionsQuery(effectiveRoleId);
-  const [draftCodes, setDraftCodes] = useState<Set<string>>(new Set());
+  const [draftState, setDraftState] = useState<{ roleKey: string; codes: Set<string> } | null>(
+    null,
+  );
   const [saveError, setSaveError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (roleDetailQuery.data) {
-      setDraftCodes(new Set(roleDetailQuery.data.permissions.map((p) => p.code)));
-      setSaveError(null);
-    }
-  }, [roleDetailQuery.data]);
 
   const initialCodes = useMemo(
     () => new Set(roleDetailQuery.data?.permissions.map((p) => p.code) ?? []),
     [roleDetailQuery.data],
   );
+
+  const currentRoleKey = roleDetailQuery.data
+    ? `${roleDetailQuery.data.roleId}:${[...roleDetailQuery.data.permissions.map((p) => p.code)].sort().join(',')}`
+    : '';
+
+  const draftCodes =
+    draftState && draftState.roleKey === currentRoleKey ? draftState.codes : initialCodes;
 
   const isDirty = useMemo(() => {
     if (draftCodes.size !== initialCodes.size) {
@@ -106,15 +108,13 @@ export function RolesPermissionsPage() {
     if (isReadOnly) {
       return;
     }
-    setDraftCodes((prev) => {
-      const next = new Set(prev);
-      if (next.has(code)) {
-        next.delete(code);
-      } else {
-        next.add(code);
-      }
-      return next;
-    });
+    const next = new Set(draftCodes);
+    if (next.has(code)) {
+      next.delete(code);
+    } else {
+      next.add(code);
+    }
+    setDraftState({ roleKey: currentRoleKey, codes: next });
   };
 
   const toggleModuleAll = (perms: readonly PermissionDto[]) => {
@@ -122,17 +122,15 @@ export function RolesPermissionsPage() {
       return;
     }
     const allChecked = perms.every((p) => draftCodes.has(p.code));
-    setDraftCodes((prev) => {
-      const next = new Set(prev);
-      for (const perm of perms) {
-        if (allChecked) {
-          next.delete(perm.code);
-        } else {
-          next.add(perm.code);
-        }
+    const next = new Set(draftCodes);
+    for (const perm of perms) {
+      if (allChecked) {
+        next.delete(perm.code);
+      } else {
+        next.add(perm.code);
       }
-      return next;
-    });
+    }
+    setDraftState({ roleKey: currentRoleKey, codes: next });
   };
 
   const handleSave = async () => {
@@ -145,6 +143,7 @@ export function RolesPermissionsPage() {
         roleId: effectiveRoleId,
         payload: { permissionCodes: Array.from(draftCodes) },
       });
+      setDraftState(null);
       toast.success(`Permissions du rôle ${roleDetailQuery.data?.name ?? ''} mises à jour.`);
     } catch (error) {
       setSaveError(
@@ -168,7 +167,10 @@ export function RolesPermissionsPage() {
               <Button
                 variant="outline"
                 disabled={!isDirty || updateMutation.isPending}
-                onClick={() => setDraftCodes(new Set(initialCodes))}
+                onClick={() => {
+                  setDraftState(null);
+                  setSaveError(null);
+                }}
               >
                 <RotateCcw className="h-4 w-4" aria-hidden="true" />
                 Réinitialiser
@@ -199,7 +201,11 @@ export function RolesPermissionsPage() {
                 <button
                   key={role.id}
                   type="button"
-                  onClick={() => setSelectedRoleId(role.id)}
+                  onClick={() => {
+                    setSelectedRoleId(role.id);
+                    setDraftState(null);
+                    setSaveError(null);
+                  }}
                   className={cn(
                     'flex w-full cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors',
                     selected

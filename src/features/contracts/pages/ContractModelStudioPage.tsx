@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Plus, Save, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -33,6 +33,7 @@ import {
   useUpdateContractModelMutation,
 } from '../hooks/useContractModelsQueries';
 import { contractModelSchema, type ContractModelFormValues } from '../schemas/contractSchemas';
+import type { ContractModelDto } from '../types/contractTypes';
 
 function insertVariableAtCursor(
   textarea: HTMLTextAreaElement | null,
@@ -117,17 +118,83 @@ function CustomVariablesField({
 
 export function ContractModelStudioPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const isEditing = Boolean(id);
   const { can } = usePermission();
   const canWrite = can(PERMISSIONS.CONTRACT_MODELS_WRITE);
 
   const modelQuery = useContractModelQuery(id);
+
+  if (isEditing && modelQuery.isLoading) {
+    return <Spinner label="Chargement du modèle de contrat..." />;
+  }
+
+  if (isEditing && modelQuery.error) {
+    return (
+      <Alert variant="danger" title="Modèle introuvable">
+        {modelQuery.error instanceof ApiError
+          ? modelQuery.error.detail
+          : 'Impossible de charger ce modèle.'}
+      </Alert>
+    );
+  }
+
+  if (isEditing && !modelQuery.data) {
+    return <Spinner label="Chargement du modèle de contrat..." />;
+  }
+
+  const model = modelQuery.data ?? null;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={isEditing ? `Studio — ${model?.title ?? ''}` : 'Nouveau modèle de contrat'}
+        description="Rédigez le contenu Markdown/Scriban puis testez le rendu PDF sur un poste."
+        actions={
+          <Button variant="outline" asChild>
+            <Link to="/contracts/models">
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Modèles
+            </Link>
+          </Button>
+        }
+      />
+
+      <ContractModelStudioForm
+        key={model ? `${model.id}-${model.rowVersion}` : 'new'}
+        id={id}
+        model={model}
+        canWrite={canWrite}
+        onRefetch={() => {
+          modelQuery.refetch().catch(() => undefined);
+        }}
+      />
+
+      {isEditing && model && <ModelPreviewAndGeneratePanel model={model} />}
+    </div>
+  );
+}
+
+function ContractModelStudioForm({
+  id,
+  model,
+  canWrite,
+  onRefetch,
+}: {
+  id: string | undefined;
+  model: ContractModelDto | null;
+  canWrite: boolean;
+  onRefetch: () => void;
+}) {
+  const navigate = useNavigate();
+  const isEditing = Boolean(id && model);
+
   const contractTypesQuery = useContractTypesQuery({ page: 1, pageSize: 100 });
   const createMutation = useCreateContractModelMutation();
   const updateMutation = useUpdateContractModelMutation();
 
-  const [customVariables, setCustomVariables] = useState<string[]>([]);
+  const [customVariables, setCustomVariables] = useState<string[]>(
+    () => model?.customVariables ?? [],
+  );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [conflictDetected, setConflictDetected] = useState(false);
 
@@ -136,34 +203,27 @@ export function ContractModelStudioPage() {
   const {
     register,
     handleSubmit,
-    reset,
     getValues,
     setValue,
     formState: { errors },
   } = useForm<ContractModelFormValues>({
     resolver: zodResolver(contractModelSchema),
-    defaultValues: {
-      title: '',
-      description: '',
-      contractTypeId: '',
-      templateContent: '',
-      isActive: true,
-    },
+    defaultValues: model
+      ? {
+          title: model.title,
+          description: model.description ?? '',
+          contractTypeId: model.contractTypeId ?? '',
+          templateContent: model.templateContent,
+          isActive: model.isActive,
+        }
+      : {
+          title: '',
+          description: '',
+          contractTypeId: '',
+          templateContent: '',
+          isActive: true,
+        },
   });
-
-  useEffect(() => {
-    if (modelQuery.data) {
-      reset({
-        title: modelQuery.data.title,
-        description: modelQuery.data.description ?? '',
-        contractTypeId: modelQuery.data.contractTypeId ?? '',
-        templateContent: modelQuery.data.templateContent,
-        isActive: modelQuery.data.isActive,
-      });
-      setCustomVariables(modelQuery.data.customVariables);
-      setConflictDetected(false);
-    }
-  }, [modelQuery.data, reset]);
 
   const templateField = register('templateContent');
 
@@ -198,10 +258,10 @@ export function ContractModelStudioPage() {
     };
 
     try {
-      if (isEditing && id && modelQuery.data) {
+      if (isEditing && id && model) {
         await updateMutation.mutateAsync({
           id,
-          payload: { ...payload, rowVersion: modelQuery.data.rowVersion },
+          payload: { ...payload, rowVersion: model.rowVersion },
         });
         toast.success('Modèle de contrat mis à jour.');
       } else {
@@ -220,40 +280,13 @@ export function ContractModelStudioPage() {
     }
   };
 
-  if (isEditing && modelQuery.isLoading) {
-    return <Spinner label="Chargement du modèle de contrat..." />;
-  }
-
-  if (isEditing && modelQuery.error) {
-    return (
-      <Alert variant="danger" title="Modèle introuvable">
-        {modelQuery.error instanceof ApiError
-          ? modelQuery.error.detail
-          : 'Impossible de charger ce modèle.'}
-      </Alert>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={isEditing ? `Studio — ${modelQuery.data?.title ?? ''}` : 'Nouveau modèle de contrat'}
-        description="Rédigez le contenu Markdown/Scriban puis testez le rendu PDF sur un poste."
-        actions={
-          <Button variant="outline" asChild>
-            <Link to="/contracts/models">
-              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              Modèles
-            </Link>
-          </Button>
-        }
-      />
-
+    <>
       {conflictDetected && (
         <ConcurrencyConflictBanner
           onReload={() => {
             setConflictDetected(false);
-            modelQuery.refetch().catch(() => undefined);
+            onRefetch();
           }}
         />
       )}
@@ -364,8 +397,6 @@ export function ContractModelStudioPage() {
           />
         </div>
       </form>
-
-      {isEditing && modelQuery.data && <ModelPreviewAndGeneratePanel model={modelQuery.data} />}
-    </div>
+    </>
   );
 }

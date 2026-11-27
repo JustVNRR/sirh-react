@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useEmployeesQuery, usePositionsQuery } from '@/features/employees';
 import { useContractTypesQuery } from '@/features/organization';
@@ -48,7 +48,7 @@ export function GenerateContractDialog({ open, onOpenChange }: GenerateContractD
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     reset,
     formState: { errors },
@@ -62,7 +62,7 @@ export function GenerateContractDialog({ open, onOpenChange }: GenerateContractD
     },
   });
 
-  const selectedModelId = watch('contractModelId');
+  const selectedModelId = useWatch({ control, name: 'contractModelId', defaultValue: '' });
   const selectedModel = (modelsQuery.data?.items ?? []).find((m) => m.id === selectedModelId);
 
   const handleClose = (nextOpen: boolean) => {

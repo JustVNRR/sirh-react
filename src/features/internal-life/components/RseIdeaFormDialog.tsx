@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useLocationsQuery } from '@/features/organization';
@@ -39,6 +39,42 @@ export function RseIdeaFormDialog({
   onRefreshRequested,
 }: RseIdeaFormDialogProps) {
   const isEditing = Boolean(idea);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? 'Modifier mon idée RSE' : 'Soumettre une idée RSE'}
+          </DialogTitle>
+          <DialogDescription>
+            Proposez une initiative environnementale, sociale ou solidaire pour votre établissement.
+          </DialogDescription>
+        </DialogHeader>
+
+        {open && (
+          <RseIdeaForm
+            key={`${idea?.id ?? 'new'}-${idea?.rowVersion ?? ''}`}
+            onOpenChange={onOpenChange}
+            idea={idea}
+            onRefreshRequested={onRefreshRequested}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RseIdeaForm({
+  onOpenChange,
+  idea,
+  onRefreshRequested,
+}: {
+  onOpenChange: (open: boolean) => void;
+  idea: RseIdeaDto | null;
+  onRefreshRequested: () => void;
+}) {
+  const isEditing = Boolean(idea);
   const locationsQuery = useLocationsQuery({ page: 1, pageSize: 100 });
   const createMutation = useCreateRseIdeaMutation();
   const updateMutation = useUpdateRseIdeaMutation();
@@ -50,34 +86,21 @@ export function RseIdeaFormDialog({
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors },
   } = useForm<RseIdeaFormValues>({
     resolver: zodResolver(rseIdeaSchema),
-    defaultValues: {
-      locationId: '',
-      title: '',
-      ideaContent: '',
-    },
+    defaultValues: idea
+      ? {
+          locationId: idea.locationId ?? '',
+          title: idea.title,
+          ideaContent: idea.ideaContent,
+        }
+      : {
+          locationId: '',
+          title: '',
+          ideaContent: '',
+        },
   });
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    if (idea) {
-      reset({
-        locationId: idea.locationId ?? '',
-        title: idea.title,
-        ideaContent: idea.ideaContent,
-      });
-    } else {
-      reset({ locationId: '', title: '', ideaContent: '' });
-    }
-    setFile(null);
-    setSubmitError(null);
-    setConflictDetected(false);
-  }, [open, idea, reset]);
 
   const onSubmit = async (values: RseIdeaFormValues) => {
     setSubmitError(null);
@@ -112,77 +135,64 @@ export function RseIdeaFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? 'Modifier mon idée RSE' : 'Soumettre une idée RSE'}
-          </DialogTitle>
-          <DialogDescription>
-            Proposez une initiative environnementale, sociale ou solidaire pour votre établissement.
-          </DialogDescription>
-        </DialogHeader>
-
-        <form
-          onSubmit={(e) => {
-            handleSubmit(onSubmit)(e).catch(() => undefined);
+    <form
+      onSubmit={(e) => {
+        handleSubmit(onSubmit)(e).catch(() => undefined);
+      }}
+      className="space-y-4"
+    >
+      {conflictDetected && (
+        <ConcurrencyConflictBanner
+          onReload={() => {
+            setConflictDetected(false);
+            onRefreshRequested();
+            onOpenChange(false);
           }}
-          className="space-y-4"
-        >
-          {conflictDetected && (
-            <ConcurrencyConflictBanner
-              onReload={() => {
-                setConflictDetected(false);
-                onRefreshRequested();
-                onOpenChange(false);
-              }}
-            />
-          )}
+        />
+      )}
 
-          {submitError && (
-            <Alert variant="danger" title="Opération impossible">
-              {submitError}
-            </Alert>
-          )}
+      {submitError && (
+        <Alert variant="danger" title="Opération impossible">
+          {submitError}
+        </Alert>
+      )}
 
-          <FormField id="rse-title" label="Titre de l’idée *" error={errors.title?.message}>
-            <Input id="rse-title" {...register('title')} />
-          </FormField>
+      <FormField id="rse-title" label="Titre de l’idée *" error={errors.title?.message}>
+        <Input id="rse-title" {...register('title')} />
+      </FormField>
 
-          <FormField id="rse-location" label="Lieu / Établissement (optionnel)">
-            <Select id="rse-location" {...register('locationId')}>
-              <option value="">Tous les établissements</option>
-              {(locationsQuery.data?.items ?? []).map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.name} ({loc.city})
-                </option>
-              ))}
-            </Select>
-          </FormField>
+      <FormField id="rse-location" label="Lieu / Établissement (optionnel)">
+        <Select id="rse-location" {...register('locationId')}>
+          <option value="">Tous les établissements</option>
+          {(locationsQuery.data?.items ?? []).map((loc) => (
+            <option key={loc.id} value={loc.id}>
+              {loc.name} ({loc.city})
+            </option>
+          ))}
+        </Select>
+      </FormField>
 
-          <FormField id="rse-content" label="Description *" error={errors.ideaContent?.message}>
-            <Textarea id="rse-content" rows={4} {...register('ideaContent')} />
-          </FormField>
+      <FormField id="rse-content" label="Description *" error={errors.ideaContent?.message}>
+        <Textarea id="rse-content" rows={4} {...register('ideaContent')} />
+      </FormField>
 
-          <FileDropzone
-            id="rse-file"
-            label={isEditing ? 'Remplacer la pièce jointe (optionnel)' : 'Pièce jointe (optionnel)'}
-            file={file}
-            onFileChange={setFile}
-            allowedExtensions={ALLOWED_DOCUMENT_EXTENSIONS}
-            maxBytes={MAX_FILE_SIZE_BYTES}
-          />
+      <FileDropzone
+        id="rse-file"
+        label={isEditing ? 'Remplacer la pièce jointe (optionnel)' : 'Pièce jointe (optionnel)'}
+        file={file}
+        onFileChange={setFile}
+        allowedExtensions={ALLOWED_DOCUMENT_EXTENSIONS}
+        maxBytes={MAX_FILE_SIZE_BYTES}
+      />
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
-            </Button>
-            <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
-              {isEditing ? 'Enregistrer' : 'Soumettre'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          Annuler
+        </Button>
+        <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
+          {isEditing ? 'Enregistrer' : 'Soumettre'}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useEmployeesQuery } from '@/features/employees';
@@ -49,10 +49,46 @@ export function StaffRepresentativeFormDialog({
   representative,
   onRefreshRequested,
 }: StaffRepresentativeFormDialogProps) {
+  const isEditing = Boolean(representative);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? 'Modifier le représentant CSE' : 'Ajouter un représentant CSE'}
+          </DialogTitle>
+          <DialogDescription>
+            Renseignez les coordonnées et le mandat du représentant ou référent harcèlement.
+          </DialogDescription>
+        </DialogHeader>
+
+        {open && (
+          <StaffRepresentativeForm
+            key={`${representative?.id ?? 'new'}-${representative?.rowVersion ?? ''}`}
+            onOpenChange={onOpenChange}
+            representative={representative}
+            onRefreshRequested={onRefreshRequested}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StaffRepresentativeForm({
+  onOpenChange,
+  representative,
+  onRefreshRequested,
+}: {
+  onOpenChange: (open: boolean) => void;
+  representative: StaffRepresentativeDto | null;
+  onRefreshRequested: () => void;
+}) {
   const { can } = usePermission();
   const canReadEmployees = can(PERMISSIONS.EMPLOYEES_READ_ALL);
   const companiesQuery = useCompaniesQuery({ page: 1, pageSize: 100 });
-  const employeesQuery = useEmployeesQuery({ page: 1, pageSize: 100 }, open && canReadEmployees);
+  const employeesQuery = useEmployeesQuery({ page: 1, pageSize: 100 }, canReadEmployees);
   const createMutation = useCreateStaffRepresentativeMutation();
   const updateMutation = useUpdateStaffRepresentativeMutation();
 
@@ -64,52 +100,31 @@ export function StaffRepresentativeFormDialog({
     register,
     handleSubmit,
     setValue,
-    reset,
     formState: { errors },
   } = useForm<StaffRepresentativeFormValues>({
     resolver: zodResolver(staffRepresentativeSchema),
-    defaultValues: {
-      companyId: '',
-      employeeId: '',
-      firstName: '',
-      lastName: '',
-      email: '',
-      representativeRole: 'titularDelegate',
-      college: 'workersEmployees',
-      isHarassmentAdvisor: false,
-    },
+    defaultValues: representative
+      ? {
+          companyId: representative.companyId,
+          employeeId: representative.employeeId ?? '',
+          firstName: representative.firstName,
+          lastName: representative.lastName,
+          email: representative.email,
+          representativeRole: representative.representativeRole,
+          college: representative.college,
+          isHarassmentAdvisor: representative.isHarassmentAdvisor,
+        }
+      : {
+          companyId: '',
+          employeeId: '',
+          firstName: '',
+          lastName: '',
+          email: '',
+          representativeRole: 'titularDelegate',
+          college: 'workersEmployees',
+          isHarassmentAdvisor: false,
+        },
   });
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    if (representative) {
-      reset({
-        companyId: representative.companyId,
-        employeeId: representative.employeeId ?? '',
-        firstName: representative.firstName,
-        lastName: representative.lastName,
-        email: representative.email,
-        representativeRole: representative.representativeRole,
-        college: representative.college,
-        isHarassmentAdvisor: representative.isHarassmentAdvisor,
-      });
-    } else {
-      reset({
-        companyId: '',
-        employeeId: '',
-        firstName: '',
-        lastName: '',
-        email: '',
-        representativeRole: 'titularDelegate',
-        college: 'workersEmployees',
-        isHarassmentAdvisor: false,
-      });
-    }
-    setSubmitError(null);
-    setConflictDetected(false);
-  }, [open, representative, reset]);
 
   const onSubmit = async (values: StaffRepresentativeFormValues) => {
     setSubmitError(null);
@@ -150,131 +165,118 @@ export function StaffRepresentativeFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? 'Modifier le représentant CSE' : 'Ajouter un représentant CSE'}
-          </DialogTitle>
-          <DialogDescription>
-            Renseignez les coordonnées et le mandat du représentant ou référent harcèlement.
-          </DialogDescription>
-        </DialogHeader>
-
-        <form
-          onSubmit={(e) => {
-            handleSubmit(onSubmit)(e).catch(() => undefined);
+    <form
+      onSubmit={(e) => {
+        handleSubmit(onSubmit)(e).catch(() => undefined);
+      }}
+      className="space-y-4"
+    >
+      {conflictDetected && (
+        <ConcurrencyConflictBanner
+          onReload={() => {
+            setConflictDetected(false);
+            onRefreshRequested();
+            onOpenChange(false);
           }}
-          className="space-y-4"
-        >
-          {conflictDetected && (
-            <ConcurrencyConflictBanner
-              onReload={() => {
-                setConflictDetected(false);
-                onRefreshRequested();
-                onOpenChange(false);
-              }}
-            />
-          )}
+        />
+      )}
 
-          {submitError && (
-            <Alert variant="danger" title="Opération impossible">
-              {submitError}
-            </Alert>
-          )}
+      {submitError && (
+        <Alert variant="danger" title="Opération impossible">
+          {submitError}
+        </Alert>
+      )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField id="cse-company" label="Entreprise *" error={errors.companyId?.message}>
-              <Select id="cse-company" {...register('companyId')}>
-                <option value="">Sélectionner...</option>
-                {(companiesQuery.data?.items ?? []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField id="cse-company" label="Entreprise *" error={errors.companyId?.message}>
+          <Select id="cse-company" {...register('companyId')}>
+            <option value="">Sélectionner...</option>
+            {(companiesQuery.data?.items ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </FormField>
 
-            {canReadEmployees && (
-              <FormField id="cse-employee" label="Rattacher un collaborateur (optionnel)">
-                <Select
-                  id="cse-employee"
-                  {...register('employeeId', {
-                    onChange: (e) => {
-                      const empId = (e.target as HTMLSelectElement).value;
-                      const found = (employeesQuery.data?.items ?? []).find((x) => x.id === empId);
-                      if (found) {
-                        setValue('firstName', found.firstName);
-                        setValue('lastName', found.lastName);
-                        setValue('email', found.email);
-                      }
-                    },
-                  })}
-                >
-                  <option value="">Saisie manuelle / externe</option>
-                  {(employeesQuery.data?.items ?? []).map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.firstName} {emp.lastName}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-            )}
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField id="cse-first-name" label="Prénom *" error={errors.firstName?.message}>
-              <Input id="cse-first-name" {...register('firstName')} />
-            </FormField>
-            <FormField id="cse-last-name" label="Nom *" error={errors.lastName?.message}>
-              <Input id="cse-last-name" {...register('lastName')} />
-            </FormField>
-          </div>
-
-          <FormField id="cse-email" label="Email *" error={errors.email?.message}>
-            <Input id="cse-email" type="email" {...register('email')} />
+        {canReadEmployees && (
+          <FormField id="cse-employee" label="Rattacher un collaborateur (optionnel)">
+            <Select
+              id="cse-employee"
+              {...register('employeeId', {
+                onChange: (e) => {
+                  const empId = (e.target as HTMLSelectElement).value;
+                  const found = (employeesQuery.data?.items ?? []).find((x) => x.id === empId);
+                  if (found) {
+                    setValue('firstName', found.firstName);
+                    setValue('lastName', found.lastName);
+                    setValue('email', found.email);
+                  }
+                },
+              })}
+            >
+              <option value="">Saisie manuelle / externe</option>
+              {(employeesQuery.data?.items ?? []).map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.firstName} {emp.lastName}
+                </option>
+              ))}
+            </Select>
           </FormField>
+        )}
+      </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField id="cse-role" label="Mandat" error={errors.representativeRole?.message}>
-              <Select id="cse-role" {...register('representativeRole')}>
-                {STAFF_REP_ROLES.map((role) => (
-                  <option key={role} value={role}>
-                    {STAFF_REP_ROLE_LABELS[role]}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField id="cse-first-name" label="Prénom *" error={errors.firstName?.message}>
+          <Input id="cse-first-name" {...register('firstName')} />
+        </FormField>
+        <FormField id="cse-last-name" label="Nom *" error={errors.lastName?.message}>
+          <Input id="cse-last-name" {...register('lastName')} />
+        </FormField>
+      </div>
 
-            <FormField id="cse-college" label="Collège électoral" error={errors.college?.message}>
-              <Select id="cse-college" {...register('college')}>
-                {ELECTORAL_COLLEGES.map((col) => (
-                  <option key={col} value={col}>
-                    {ELECTORAL_COLLEGE_LABELS[col]}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-          </div>
+      <FormField id="cse-email" label="Email *" error={errors.email?.message}>
+        <Input id="cse-email" type="email" {...register('email')} />
+      </FormField>
 
-          <label
-            htmlFor="cse-harassment"
-            className="flex items-center gap-2 text-sm text-[var(--foreground)]"
-          >
-            <Checkbox id="cse-harassment" {...register('isHarassmentAdvisor')} />
-            Référent harcèlement sexuel et agissements sexistes
-          </label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField id="cse-role" label="Mandat" error={errors.representativeRole?.message}>
+          <Select id="cse-role" {...register('representativeRole')}>
+            {STAFF_REP_ROLES.map((role) => (
+              <option key={role} value={role}>
+                {STAFF_REP_ROLE_LABELS[role]}
+              </option>
+            ))}
+          </Select>
+        </FormField>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
-            </Button>
-            <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
-              {isEditing ? 'Enregistrer' : 'Ajouter'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <FormField id="cse-college" label="Collège électoral" error={errors.college?.message}>
+          <Select id="cse-college" {...register('college')}>
+            {ELECTORAL_COLLEGES.map((col) => (
+              <option key={col} value={col}>
+                {ELECTORAL_COLLEGE_LABELS[col]}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+      </div>
+
+      <label
+        htmlFor="cse-harassment"
+        className="flex items-center gap-2 text-sm text-[var(--foreground)]"
+      >
+        <Checkbox id="cse-harassment" {...register('isHarassmentAdvisor')} />
+        Référent harcèlement sexuel et agissements sexistes
+      </label>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          Annuler
+        </Button>
+        <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
+          {isEditing ? 'Enregistrer' : 'Ajouter'}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

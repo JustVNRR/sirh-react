@@ -1,5 +1,5 @@
 import { Download } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { triggerBlobDownload } from '@/shared/lib/file';
 import { Button } from './Button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './Dialog';
@@ -19,21 +19,19 @@ export function PdfPreviewModal({
   fileName,
   title = 'Aperçu du document',
 }: PdfPreviewModalProps) {
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open || !blob) {
-      setObjectUrl(null);
-      return;
-    }
-
-    const url = URL.createObjectURL(blob);
-    setObjectUrl(url);
-
-    return () => {
-      URL.revokeObjectURL(url);
-    };
-  }, [open, blob]);
+  const attachBlobSrc = useCallback(
+    (node: HTMLImageElement | HTMLIFrameElement | null) => {
+      if (!node || !blob) {
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      node.src = url;
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    },
+    [blob],
+  );
 
   const isImage = blob?.type.startsWith('image/') ?? false;
 
@@ -56,11 +54,11 @@ export function PdfPreviewModal({
           </div>
         </DialogHeader>
         <div className="mt-4 h-[70vh] w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]">
-          {objectUrl && isImage && (
-            <img src={objectUrl} alt={fileName} className="h-full w-full object-contain" />
+          {open && blob && isImage && (
+            <img ref={attachBlobSrc} alt={fileName} className="h-full w-full object-contain" />
           )}
-          {objectUrl && !isImage && (
-            <iframe src={objectUrl} title={fileName} className="h-full w-full border-0" />
+          {open && blob && !isImage && (
+            <iframe ref={attachBlobSrc} title={fileName} className="h-full w-full border-0" />
           )}
         </div>
       </DialogContent>
