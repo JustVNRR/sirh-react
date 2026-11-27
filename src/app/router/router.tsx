@@ -17,6 +17,11 @@ import {
   WelcomeKitsPage,
 } from '@/features/internal-life';
 import { NotificationsPage } from '@/features/notifications';
+import {
+  OnboardingQuizzesPage,
+  QuizBuilderPage,
+  QuizPlayerPage,
+} from '@/features/onboarding-quizzes';
 import { CompaniesPage, ContractTypesPage, LocationsPage } from '@/features/organization';
 import { RolesPermissionsPage } from '@/features/roles';
 import { PERMISSIONS } from '@/shared/auth/permissions';
@@ -249,7 +254,33 @@ export function createAppRoutes(): RouteObject[] {
               path: '/onboarding-quizzes',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.QUIZZES_READ]}>
-                  <ModulePlannedPage title="QCM d'intégration" sprint="Sprint 6" />
+                  <OnboardingQuizzesPage />
+                </RequirePermission>
+              ),
+            },
+            {
+              path: '/onboarding-quizzes/new',
+              element: (
+                <RequirePermission anyOf={[PERMISSIONS.QUIZZES_WRITE]}>
+                  <QuizBuilderPage />
+                </RequirePermission>
+              ),
+            },
+            {
+              path: '/onboarding-quizzes/:id/edit',
+              element: (
+                <RequirePermission
+                  anyOf={[PERMISSIONS.QUIZZES_WRITE, PERMISSIONS.QUIZZES_RESULTS_ALL]}
+                >
+                  <QuizBuilderPage />
+                </RequirePermission>
+              ),
+            },
+            {
+              path: '/onboarding-quizzes/:id/take',
+              element: (
+                <RequirePermission anyOf={[PERMISSIONS.QUIZZES_TAKE]}>
+                  <QuizPlayerPage />
                 </RequirePermission>
               ),
             },
