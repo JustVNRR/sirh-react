@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-27
+
+### Added
+
+- **Medical Visits Scheduling & Documents (`e9c99fe`)**: Added `/health/medical-visits` supporting all 6 visit types (`hiring`, `followUp`, `preReturnToWork`, `returnToWork`, `employerRequested`, `employeeRequested`), mandatory `convocationFile` validation on creation, optional `reportFile` upload/replacement, inline `PdfPreviewModal` & download for convocations and reports, `409 Conflict` reload, and self-service view (`Mes visites médicales`).
+- **Notification Center (`2fe3e75`)**: Added `/notifications` with `isRead` & `category` filters (`medicalVisitReminder`, `documentExpiryAlert`, `rseUpdate`, `system`), contextual module links, single `markAsRead`, `POST /api/v1/notifications/read-all`, delete confirmation, and live synchronization of header & sidebar unread badges via `AuthContext`.
+- **Role-Adaptive Dashboard Widgets (`2fe3e75`)**: Enriched `/dashboard` with permission-gated KPI cards (unread notifications, upcoming medical visits, active headcount, pending RSE ideas) and actionable recent lists without emitting unauthorized API requests.
+
 ## [0.4.0] - 2026-11-27
 
 ### Added
