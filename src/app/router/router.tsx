@@ -7,6 +7,7 @@ import {
 } from '@/features/auth';
 import { DashboardPage } from '@/features/dashboard';
 import { CompaniesPage, ContractTypesPage, LocationsPage } from '@/features/organization';
+import { RolesPermissionsPage } from '@/features/roles';
 import { PERMISSIONS } from '@/shared/auth/permissions';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 import { ModulePlannedPage } from '../pages/ModulePlannedPage';
@@ -69,7 +70,7 @@ export function createAppRoutes(): RouteObject[] {
               path: '/admin/roles',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.ROLES_READ]}>
-                  <ModulePlannedPage title="Rôles & Permissions" sprint="Sprint 1" />
+                  <RolesPermissionsPage />
                 </RequirePermission>
               ),
             },
