@@ -9,6 +9,7 @@ import { ContractModelsPage, ContractModelStudioPage, ContractsPage } from '@/fe
 import { DashboardPage } from '@/features/dashboard';
 import { EmployeeDocumentsPage } from '@/features/employee-documents';
 import { EmployeeFormPage, EmployeesDirectoryPage } from '@/features/employees';
+import { MedicalVisitsPage } from '@/features/health';
 import { CompaniesPage, ContractTypesPage, LocationsPage } from '@/features/organization';
 import { RolesPermissionsPage } from '@/features/roles';
 import { PERMISSIONS } from '@/shared/auth/permissions';
@@ -189,7 +190,7 @@ export function createAppRoutes(): RouteObject[] {
                     PERMISSIONS.MEDICAL_VISITS_READ_ALL,
                   ]}
                 >
-                  <ModulePlannedPage title="Visites médicales" sprint="Sprint 4" />
+                  <MedicalVisitsPage />
                 </RequirePermission>
               ),
             },
