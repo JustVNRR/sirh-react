@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-27
+
+### Added
+
+- **Structured Onboarding Quizzes (`97d6372`)**: Added `/onboarding-quizzes`, `/onboarding-quizzes/new`, `/onboarding-quizzes/:id/edit` (RH builder with `singleChoice`/`multipleChoice` questions, explanations, publish `400` validation surfacing without form loss, `409 Conflict` reload, and filtered `Résultats` attempts tab), and `/onboarding-quizzes/:id/take` (server-scored player and detailed per-question correction view).
+- **URSSAF Estimator & eDocPerso Utilities (`a6224d4`)**: Added `/tools/urssaf-estimator` (`VITE_URSSAF_ENABLED` iframe + external fallback) and secure `rel="noopener noreferrer"` `eDocPerso` portal links on `/tools/urssaf-estimator` and `/dashboard`.
+- **Bundle Splitting & Playwright E2E Suite (`a6224d4`)**: Configured Vite `manualChunks` vendor/feature splitting (zero >500 kB chunk warnings), added Chromium Playwright E2E suite (`e2e/critical-flows.spec.ts`, `npm run test:e2e`), and added the `e2e` job to `.github/workflows/ci.yml`.
+- **GA Release `v1.0.0`**: Completed all 34 User Stories (153 story points) across Sprints 0–6 with 0 production npm vulnerabilities.
+
 ## [0.6.0] - 2026-11-27
 
 ### Added
