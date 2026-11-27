@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-27
+
+### Added
+
+- **Organization Referentials (`9e399a8`)**: Added Companies CRUD (`/organization/companies` with 14-digit SIRET Luhn + La Poste validation, `"Syntec"` default, status toggle, and `409 Conflict` reload), Locations CRUD (`/organization/locations` with `#RRGGBB` color picker, publication filter, and `409` reference protection), Contract Types CRUD (`/organization/contract-types` protecting `isSystem` codes/deletion), and live French departments referential (`/api/v1/referentials/departments`).
+- **RBAC Roles & Permissions Matrix (`fcd0972`)**: Added `/admin/roles` administration matrix grouping all 56 permissions by module with bulk module toggles, automatic `SUPER_ADMIN` lock for non-`SUPER_ADMIN` admins, and live `/auth/me` profile refresh when the current user's role is updated.
+- **Shared Controls (`9e399a8`)**: Added `Select`, `Checkbox`, `ConcurrencyConflictBanner`, `useDebounce`, and `isValidSiret` / `isValidHttpUrl` helpers.
+
 ## [0.1.0] - 2026-11-27
 
 ### Added
