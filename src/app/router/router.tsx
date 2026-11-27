@@ -10,7 +10,12 @@ import { DashboardPage } from '@/features/dashboard';
 import { EmployeeDocumentsPage } from '@/features/employee-documents';
 import { EmployeeFormPage, EmployeesDirectoryPage } from '@/features/employees';
 import { MedicalVisitsPage } from '@/features/health';
-import { CommonDocumentsPage, WelcomeKitsPage } from '@/features/internal-life';
+import {
+  CommonDocumentsPage,
+  RseIdeasPage,
+  StaffRepresentativesPage,
+  WelcomeKitsPage,
+} from '@/features/internal-life';
 import { NotificationsPage } from '@/features/notifications';
 import { CompaniesPage, ContractTypesPage, LocationsPage } from '@/features/organization';
 import { RolesPermissionsPage } from '@/features/roles';
@@ -226,7 +231,7 @@ export function createAppRoutes(): RouteObject[] {
               path: '/internal-life/staff-representatives',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.STAFF_REPS_READ]}>
-                  <ModulePlannedPage title="Représentants du personnel (CSE)" sprint="Sprint 5" />
+                  <StaffRepresentativesPage />
                 </RequirePermission>
               ),
             },
@@ -234,7 +239,7 @@ export function createAppRoutes(): RouteObject[] {
               path: '/internal-life/rse-ideas',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.RSE_READ_SELF, PERMISSIONS.RSE_READ_ALL]}>
-                  <ModulePlannedPage title="Boîte à idées RSE" sprint="Sprint 5" />
+                  <RseIdeasPage />
                 </RequirePermission>
               ),
             },
