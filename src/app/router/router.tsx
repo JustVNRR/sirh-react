@@ -7,15 +7,12 @@ import {
 } from '@/features/auth';
 import { ContractModelsPage, ContractModelStudioPage, ContractsPage } from '@/features/contracts';
 import { DashboardPage } from '@/features/dashboard';
-import {
-  EmployeeDetailPage,
-  EmployeeFormPage,
-  EmployeesDirectoryPage,
-  MySpacePage,
-} from '@/features/employees';
+import { EmployeeDocumentsPage } from '@/features/employee-documents';
+import { EmployeeFormPage, EmployeesDirectoryPage } from '@/features/employees';
 import { CompaniesPage, ContractTypesPage, LocationsPage } from '@/features/organization';
 import { RolesPermissionsPage } from '@/features/roles';
 import { PERMISSIONS } from '@/shared/auth/permissions';
+import { EmployeeProfilePage, MyProfilePage } from '../pages/EmployeeWorkspacePages';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 import { ModulePlannedPage } from '../pages/ModulePlannedPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -87,7 +84,7 @@ export function createAppRoutes(): RouteObject[] {
               path: '/me',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.EMPLOYEES_READ_SELF]}>
-                  <MySpacePage />
+                  <MyProfilePage />
                 </RequirePermission>
               ),
             },
@@ -119,7 +116,7 @@ export function createAppRoutes(): RouteObject[] {
                     PERMISSIONS.EMPLOYEES_READ_ALL,
                   ]}
                 >
-                  <EmployeeDetailPage />
+                  <EmployeeProfilePage />
                 </RequirePermission>
               ),
             },
@@ -177,7 +174,7 @@ export function createAppRoutes(): RouteObject[] {
                     PERMISSIONS.EMPLOYEE_DOCS_READ_ALL,
                   ]}
                 >
-                  <ModulePlannedPage title="Dossiers salariés" sprint="Sprint 3" />
+                  <EmployeeDocumentsPage />
                 </RequirePermission>
               ),
             },
