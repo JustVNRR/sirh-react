@@ -1,5 +1,6 @@
 export {
   useCompaniesQuery,
+  useContractTypesQuery,
   useDepartmentsQuery,
   useLocationsQuery,
 } from './hooks/useOrganizationQueries';

@@ -5,6 +5,7 @@ import {
   LoginPage,
   ResetPasswordPage,
 } from '@/features/auth';
+import { ContractModelsPage, ContractModelStudioPage } from '@/features/contracts';
 import { DashboardPage } from '@/features/dashboard';
 import {
   EmployeeDetailPage,
@@ -146,7 +147,23 @@ export function createAppRoutes(): RouteObject[] {
               path: '/contracts/models',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.CONTRACT_MODELS_READ]}>
-                  <ModulePlannedPage title="Modèles de contrat" sprint="Sprint 3" />
+                  <ContractModelsPage />
+                </RequirePermission>
+              ),
+            },
+            {
+              path: '/contracts/models/new',
+              element: (
+                <RequirePermission anyOf={[PERMISSIONS.CONTRACT_MODELS_WRITE]}>
+                  <ContractModelStudioPage />
+                </RequirePermission>
+              ),
+            },
+            {
+              path: '/contracts/models/:id',
+              element: (
+                <RequirePermission anyOf={[PERMISSIONS.CONTRACT_MODELS_READ]}>
+                  <ContractModelStudioPage />
                 </RequirePermission>
               ),
             },
