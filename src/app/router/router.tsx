@@ -10,6 +10,7 @@ import { DashboardPage } from '@/features/dashboard';
 import { EmployeeDocumentsPage } from '@/features/employee-documents';
 import { EmployeeFormPage, EmployeesDirectoryPage } from '@/features/employees';
 import { MedicalVisitsPage } from '@/features/health';
+import { NotificationsPage } from '@/features/notifications';
 import { CompaniesPage, ContractTypesPage, LocationsPage } from '@/features/organization';
 import { RolesPermissionsPage } from '@/features/roles';
 import { PERMISSIONS } from '@/shared/auth/permissions';
@@ -198,7 +199,7 @@ export function createAppRoutes(): RouteObject[] {
               path: '/notifications',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.NOTIFICATIONS_READ_SELF]}>
-                  <ModulePlannedPage title="Centre de notifications" sprint="Sprint 4" />
+                  <NotificationsPage />
                 </RequirePermission>
               ),
             },

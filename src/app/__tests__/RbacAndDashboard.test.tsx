@@ -42,17 +42,53 @@ function mockAuthenticatedUser(
 }
 
 describe('RBAC Navigation & Dashboard integration', () => {
-  it('hides unauthorized menu entries and blocks direct access with 403 for EMPLOYEE', async () => {
+  it('hides unauthorized menu entries, avoids HR-only requests, and blocks 403 for EMPLOYEE', async () => {
+    let hrOnlyRequested = false;
     mockAuthenticatedUser(
       [{ id: 'r-emp', code: ROLES.EMPLOYEE, name: 'Employe', priority: 2 }],
       [PERMISSIONS.EMPLOYEES_READ_SELF, PERMISSIONS.NOTIFICATIONS_READ_SELF],
       3,
+    );
+    mswServer.use(
+      http.get(api('/api/v1/notifications'), () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'n-1',
+              recipientEmployeeId: 'e-1',
+              category: 'system',
+              referenceEntity: null,
+              referenceId: null,
+              subject: 'Bienvenue sur le SIRH',
+              content: 'Votre compte est actif.',
+              isRead: false,
+              readAtUtc: null,
+              emailSent: false,
+              createdAtUtc: '2026-11-27T09:00:00Z',
+            },
+          ],
+          page: 1,
+          pageSize: 5,
+          totalCount: 1,
+          totalPages: 1,
+        }),
+      ),
+      http.get(api('/api/v1/employees'), () => {
+        hrOnlyRequested = true;
+        return HttpResponse.json({ items: [], page: 1, pageSize: 1, totalCount: 0, totalPages: 1 });
+      }),
+      http.get(api('/api/v1/rse-ideas'), () => {
+        hrOnlyRequested = true;
+        return HttpResponse.json({ items: [], page: 1, pageSize: 1, totalCount: 0, totalPages: 1 });
+      }),
     );
 
     renderAppAt(['/dashboard']);
 
     expect(await screen.findByRole('heading', { name: 'Tableau de bord' })).toBeInTheDocument();
     expect(screen.getByText('3 non lues')).toBeInTheDocument();
+    expect(await screen.findByText('Bienvenue sur le SIRH')).toBeInTheDocument();
+    expect(hrOnlyRequested).toBe(false);
     expect(screen.queryByRole('link', { name: 'Rôles & Permissions' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Collaborateurs' })).not.toBeInTheDocument();
 
@@ -60,23 +96,101 @@ describe('RBAC Navigation & Dashboard integration', () => {
     expect(await screen.findByText('403 — Accès refusé')).toBeInTheDocument();
   });
 
-  it('shows HR and Admin sections for ADMIN user', async () => {
+  it('shows HR widgets (notifications, visits, headcount, pending RSE) for HR user', async () => {
     mockAuthenticatedUser(
-      [{ id: 'r-adm', code: ROLES.ADMIN, name: 'Admin', priority: 6 }],
+      [{ id: 'r-hr', code: ROLES.HR, name: 'RH', priority: 5 }],
       [
         PERMISSIONS.EMPLOYEES_READ_SELF,
         PERMISSIONS.EMPLOYEES_READ_ALL,
+        PERMISSIONS.NOTIFICATIONS_READ_SELF,
+        PERMISSIONS.MEDICAL_VISITS_READ_ALL,
+        PERMISSIONS.RSE_READ_ALL,
         PERMISSIONS.COMPANIES_READ,
         PERMISSIONS.ROLES_READ,
       ],
+      2,
+    );
+    mswServer.use(
+      http.get(api('/api/v1/notifications'), () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'n-2',
+              recipientEmployeeId: 'e-1',
+              category: 'medicalVisitReminder',
+              referenceEntity: 'MedicalVisit',
+              referenceId: 'mv-1',
+              subject: 'Rappel visite annuelle',
+              content: 'Visite demain à 10h.',
+              isRead: false,
+              readAtUtc: null,
+              emailSent: true,
+              createdAtUtc: '2026-11-27T08:00:00Z',
+            },
+          ],
+          page: 1,
+          pageSize: 5,
+          totalCount: 1,
+          totalPages: 1,
+        }),
+      ),
+      http.get(api('/api/v1/medical-visits'), () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'mv-1',
+              employeeId: 'e-2',
+              visitType: 'hiring',
+              visitDateTimeUtc: '2026-12-02T09:00:00Z',
+              validityDate: null,
+              medicalCenter: 'AST Grand Paris',
+              carriedOut: false,
+              comments: null,
+              convocationFileName: 'convocation.pdf',
+              convocationContentType: 'application/pdf',
+              convocationFileSizeBytes: 12000,
+              hasReport: false,
+              reportFileName: null,
+              reportContentType: null,
+              reportFileSizeBytes: null,
+              reminderSentAtUtc: null,
+              createdAtUtc: '2026-11-20T09:00:00Z',
+              updatedAtUtc: '2026-11-20T09:00:00Z',
+              rowVersion: '1',
+            },
+          ],
+          page: 1,
+          pageSize: 5,
+          totalCount: 4,
+          totalPages: 1,
+        }),
+      ),
+      http.get(api('/api/v1/employees'), () =>
+        HttpResponse.json({
+          items: [],
+          page: 1,
+          pageSize: 1,
+          totalCount: 42,
+          totalPages: 42,
+        }),
+      ),
+      http.get(api('/api/v1/rse-ideas'), () =>
+        HttpResponse.json({
+          items: [],
+          page: 1,
+          pageSize: 1,
+          totalCount: 7,
+          totalPages: 7,
+        }),
+      ),
     );
 
     renderAppAt(['/dashboard']);
 
-    expect(await screen.findByRole('heading', { name: 'Tableau de bord' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Collaborateurs' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Entreprises' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Rôles & Permissions' })).toBeInTheDocument();
+    expect(await screen.findByText('42')).toBeInTheDocument();
+    expect(await screen.findByText('7')).toBeInTheDocument();
+    expect(await screen.findByText('Rappel visite annuelle')).toBeInTheDocument();
+    expect(await screen.findByText(/AST Grand Paris/i)).toBeInTheDocument();
   });
 
   it('shows restricted access banner for UNKNOWN role with no permissions', async () => {

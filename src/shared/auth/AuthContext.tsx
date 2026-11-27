@@ -19,6 +19,7 @@ interface AuthContextValue {
   user: CurrentUserProfile | null;
   setAuthenticatedSession: (tokens: AuthTokens) => Promise<CurrentUserProfile>;
   refreshProfile: () => Promise<CurrentUserProfile | null>;
+  setUnreadNotificationsCount: (updater: number | ((prev: number) => number)) => void;
   clearSession: (broadcast?: boolean) => void;
 }
 
@@ -33,6 +34,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setStatus('unauthenticated');
   }, []);
+
+  const setUnreadNotificationsCount = useCallback(
+    (updater: number | ((prev: number) => number)) => {
+      setUser((prevUser) => {
+        if (!prevUser) {
+          return prevUser;
+        }
+        const nextCount =
+          typeof updater === 'function' ? updater(prevUser.unreadNotificationsCount) : updater;
+        return {
+          ...prevUser,
+          unreadNotificationsCount: Math.max(0, nextCount),
+        };
+      });
+    },
+    [],
+  );
 
   const refreshProfile = useCallback(async (): Promise<CurrentUserProfile | null> => {
     try {
@@ -103,9 +121,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       setAuthenticatedSession,
       refreshProfile,
+      setUnreadNotificationsCount,
       clearSession,
     }),
-    [status, user, setAuthenticatedSession, refreshProfile, clearSession],
+    [
+      status,
+      user,
+      setAuthenticatedSession,
+      refreshProfile,
+      setUnreadNotificationsCount,
+      clearSession,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

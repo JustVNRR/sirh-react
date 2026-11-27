@@ -24,6 +24,7 @@ import {
   CardTitle,
   PageHeader,
 } from '@/shared/ui';
+import { DashboardWidgets } from '../components/DashboardWidgets';
 
 interface ShortcutCardProps {
   title: string;
@@ -94,6 +95,8 @@ export function DashboardPage() {
         </Alert>
       )}
 
+      {!isRestrictedUnknown && <DashboardWidgets />}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <PermissionGate anyOf={[PERMISSIONS.NOTIFICATIONS_READ_SELF]}>
           <ShortcutCard
@@ -132,7 +135,9 @@ export function DashboardPage() {
           />
         </PermissionGate>
 
-        <PermissionGate anyOf={[PERMISSIONS.MEDICAL_VISITS_READ_ALL]}>
+        <PermissionGate
+          anyOf={[PERMISSIONS.MEDICAL_VISITS_READ_SELF, PERMISSIONS.MEDICAL_VISITS_READ_ALL]}
+        >
           <ShortcutCard
             title="Visites médicales"
             description="Suivez les convocations, visites planifiées et rapports médicaux."
