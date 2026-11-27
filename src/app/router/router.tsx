@@ -24,10 +24,10 @@ import {
 } from '@/features/onboarding-quizzes';
 import { CompaniesPage, ContractTypesPage, LocationsPage } from '@/features/organization';
 import { RolesPermissionsPage } from '@/features/roles';
+import { UrssafEstimatorPage } from '@/features/tools';
 import { PERMISSIONS } from '@/shared/auth/permissions';
 import { EmployeeProfilePage, MyProfilePage } from '../pages/EmployeeWorkspacePages';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
-import { ModulePlannedPage } from '../pages/ModulePlannedPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { GuestOnly, RequireAuth, RequirePermission } from './guards';
 import { AuthLayoutRoute, ProtectedAppLayout } from './layouts';
@@ -286,7 +286,7 @@ export function createAppRoutes(): RouteObject[] {
             },
             {
               path: '/tools/urssaf-estimator',
-              element: <ModulePlannedPage title="Estimateur URSSAF" sprint="Sprint 6" />,
+              element: <UrssafEstimatorPage />,
             },
 
             { path: '*', element: <NotFoundPage /> },

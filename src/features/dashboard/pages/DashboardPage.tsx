@@ -1,6 +1,7 @@
 import {
   Bell,
   Building,
+  ExternalLink,
   FileText,
   GraduationCap,
   HeartPulse,
@@ -14,6 +15,7 @@ import type { ComponentType } from 'react';
 import { Link } from 'react-router-dom';
 import { PermissionGate, useAuth } from '@/shared/auth/AuthContext';
 import { PERMISSIONS, ROLES, hasRole } from '@/shared/auth/permissions';
+import { env } from '@/shared/config/env';
 import {
   Alert,
   Badge,
@@ -190,6 +192,32 @@ export function DashboardPage() {
             icon={ShieldCheck}
           />
         </PermissionGate>
+
+        {!isRestrictedUnknown && (
+          <a
+            href={env.edocPersoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group block"
+          >
+            <Card className="h-full transition-colors group-hover:border-[var(--primary)]">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-[var(--primary)] dark:bg-indigo-950/60">
+                  <ExternalLink className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <Badge variant="neutral">Externe</Badge>
+              </CardHeader>
+              <CardContent>
+                <CardTitle className="text-base group-hover:text-[var(--primary)]">
+                  Fiches de paie (eDocPerso)
+                </CardTitle>
+                <CardDescription className="mt-1.5">
+                  Accédez à votre coffre-fort personnel externe de bulletins de paie.
+                </CardDescription>
+              </CardContent>
+            </Card>
+          </a>
+        )}
       </div>
     </div>
   );
