@@ -1,6 +1,6 @@
 export { useEmployeesQuery } from './hooks/useEmployeesQueries';
 export { usePositionsQuery } from './hooks/usePositionsQueries';
-export { EmployeeDetailPage } from './pages/EmployeeDetailPage';
+export { EmployeeDetailPage, EmployeeDetailView } from './pages/EmployeeDetailPage';
 export { EmployeeFormPage } from './pages/EmployeeFormPage';
 export { EmployeesDirectoryPage } from './pages/EmployeesDirectoryPage';
 export { MySpacePage } from './pages/MySpacePage';

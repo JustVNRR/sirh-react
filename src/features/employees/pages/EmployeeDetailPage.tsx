@@ -1,5 +1,5 @@
 import { ArrowLeft, Pencil, Power } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useDepartmentsQuery } from '@/features/organization';
@@ -31,6 +31,7 @@ import {
 import { EmergencyContactsTab } from '../components/EmergencyContactsTab';
 import { PositionsTab } from '../components/PositionsTab';
 import { PRIVILEGED_ROLES } from '../schemas/employeeSchemas';
+import type { PositionDto } from '../types/employeeTypes';
 
 function MaskedOrValue({ value }: { value: string | null | undefined }) {
   if (value === null) {
@@ -144,7 +145,21 @@ function EmployeeHeaderActions({
   );
 }
 
-export function EmployeeDetailView({ employeeId }: { employeeId: string }) {
+export interface EmployeeExtraTab {
+  value: string;
+  label: string;
+  content: ReactNode;
+}
+
+export function EmployeeDetailView({
+  employeeId,
+  renderPositionExtra,
+  extraTabs = [],
+}: {
+  employeeId: string;
+  renderPositionExtra?: (position: PositionDto) => ReactNode;
+  extraTabs?: EmployeeExtraTab[];
+}) {
   const { user } = useAuth();
   const { can } = usePermission();
   const detailQuery = useEmployeeDetailQuery(employeeId);
@@ -242,6 +257,11 @@ export function EmployeeDetailView({ employeeId }: { employeeId: string }) {
             <TabsTrigger value="emergency-contacts">Contacts d&apos;urgence</TabsTrigger>
           )}
           <TabsTrigger value="positions">Postes &amp; Historique</TabsTrigger>
+          {extraTabs.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="profile">
@@ -269,8 +289,18 @@ export function EmployeeDetailView({ employeeId }: { employeeId: string }) {
         )}
 
         <TabsContent value="positions">
-          <PositionsTab employeeId={employee.id} canWrite={can(PERMISSIONS.POSITIONS_WRITE)} />
+          <PositionsTab
+            employeeId={employee.id}
+            canWrite={can(PERMISSIONS.POSITIONS_WRITE)}
+            renderPositionExtra={renderPositionExtra}
+          />
         </TabsContent>
+
+        {extraTabs.map((tab) => (
+          <TabsContent key={tab.value} value={tab.value}>
+            {tab.content}
+          </TabsContent>
+        ))}
       </Tabs>
 
       <ConfirmDialog

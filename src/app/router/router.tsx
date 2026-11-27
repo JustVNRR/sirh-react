@@ -5,7 +5,7 @@ import {
   LoginPage,
   ResetPasswordPage,
 } from '@/features/auth';
-import { ContractModelsPage, ContractModelStudioPage } from '@/features/contracts';
+import { ContractModelsPage, ContractModelStudioPage, ContractsPage } from '@/features/contracts';
 import { DashboardPage } from '@/features/dashboard';
 import {
   EmployeeDetailPage,
@@ -139,7 +139,7 @@ export function createAppRoutes(): RouteObject[] {
                 <RequirePermission
                   anyOf={[PERMISSIONS.CONTRACTS_READ_SELF, PERMISSIONS.CONTRACTS_READ_ALL]}
                 >
-                  <ModulePlannedPage title="Contrats" sprint="Sprint 3" />
+                  <ContractsPage />
                 </RequirePermission>
               ),
             },

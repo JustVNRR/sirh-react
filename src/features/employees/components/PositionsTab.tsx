@@ -1,5 +1,5 @@
 import { Briefcase, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { ApiError } from '@/shared/api/types';
 import { formatDateFr } from '@/shared/lib/format';
@@ -17,7 +17,15 @@ import { useDeletePositionMutation, usePositionsQuery } from '../hooks/usePositi
 import type { PositionDto } from '../types/employeeTypes';
 import { PositionFormDialog } from './PositionFormDialog';
 
-export function PositionsTab({ employeeId, canWrite }: { employeeId: string; canWrite: boolean }) {
+export function PositionsTab({
+  employeeId,
+  canWrite,
+  renderPositionExtra,
+}: {
+  employeeId: string;
+  canWrite: boolean;
+  renderPositionExtra?: (position: PositionDto) => ReactNode;
+}) {
   const query = usePositionsQuery(employeeId);
   const deleteMutation = useDeletePositionMutation(employeeId);
 
@@ -95,53 +103,56 @@ export function PositionsTab({ employeeId, canWrite }: { employeeId: string; can
         <div className="space-y-3">
           {positions.map((pos) => (
             <Card key={pos.id} className={pos.isCurrent ? 'border-[var(--primary)]' : undefined}>
-              <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-[var(--foreground)]">{pos.jobTitle}</p>
-                    {pos.isCurrent && <Badge variant="success">Poste actuel</Badge>}
-                    {pos.hierarchicalPosition && (
-                      <Badge variant="neutral">{pos.hierarchicalPosition}</Badge>
+              <CardContent className="p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-[var(--foreground)]">{pos.jobTitle}</p>
+                      {pos.isCurrent && <Badge variant="success">Poste actuel</Badge>}
+                      {pos.hierarchicalPosition && (
+                        <Badge variant="neutral">{pos.hierarchicalPosition}</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-[var(--muted-foreground)]">
+                      Du {formatDateFr(pos.startAt)} au{' '}
+                      {pos.endAt ? formatDateFr(pos.endAt) : 'Poste ouvert'}
+                    </p>
+                    {pos.timeContractType && pos.timeContractAmount !== null && (
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        Temps de travail : {pos.timeContractAmount}{' '}
+                        {pos.timeContractType === 'Hours' ? 'heures' : 'jours'}
+                        {pos.coefficient ? ` · Coeff. ${pos.coefficient}` : ''}
+                      </p>
                     )}
                   </div>
-                  <p className="text-sm text-[var(--muted-foreground)]">
-                    Du {formatDateFr(pos.startAt)} au{' '}
-                    {pos.endAt ? formatDateFr(pos.endAt) : 'Poste ouvert'}
-                  </p>
-                  {pos.timeContractType && pos.timeContractAmount !== null && (
-                    <p className="text-xs text-[var(--muted-foreground)]">
-                      Temps de travail : {pos.timeContractAmount}{' '}
-                      {pos.timeContractType === 'Hours' ? 'heures' : 'jours'}
-                      {pos.coefficient ? ` · Coeff. ${pos.coefficient}` : ''}
-                    </p>
+                  {canWrite && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Modifier le poste ${pos.jobTitle}`}
+                        onClick={() => {
+                          setSelectedPosition(pos);
+                          setDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Supprimer le poste ${pos.jobTitle}`}
+                        onClick={() => {
+                          setDeleteError(null);
+                          setDeleteTarget(pos);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-[var(--danger)]" aria-hidden="true" />
+                      </Button>
+                    </div>
                   )}
                 </div>
-                {canWrite && (
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Modifier le poste ${pos.jobTitle}`}
-                      onClick={() => {
-                        setSelectedPosition(pos);
-                        setDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Supprimer le poste ${pos.jobTitle}`}
-                      onClick={() => {
-                        setDeleteError(null);
-                        setDeleteTarget(pos);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 text-[var(--danger)]" aria-hidden="true" />
-                    </Button>
-                  </div>
-                )}
+                {renderPositionExtra?.(pos)}
               </CardContent>
             </Card>
           ))}

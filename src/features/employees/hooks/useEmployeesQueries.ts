@@ -15,10 +15,11 @@ export const employeesKeys = {
   positions: (employeeId: string) => [...employeesKeys.all, 'positions', employeeId] as const,
 };
 
-export function useEmployeesQuery(filter: EmployeeQueryFilter) {
+export function useEmployeesQuery(filter: EmployeeQueryFilter, enabled = true) {
   return useQuery({
     queryKey: employeesKeys.list(filter),
     queryFn: () => employeesApi.getPaged(filter),
+    enabled,
   });
 }
 
