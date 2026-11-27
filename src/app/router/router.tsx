@@ -6,6 +6,7 @@ import {
   ResetPasswordPage,
 } from '@/features/auth';
 import { DashboardPage } from '@/features/dashboard';
+import { CompaniesPage, ContractTypesPage, LocationsPage } from '@/features/organization';
 import { PERMISSIONS } from '@/shared/auth/permissions';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 import { ModulePlannedPage } from '../pages/ModulePlannedPage';
@@ -44,7 +45,7 @@ export function createAppRoutes(): RouteObject[] {
               path: '/organization/companies',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.COMPANIES_READ]}>
-                  <ModulePlannedPage title="Entreprises" sprint="Sprint 1" />
+                  <CompaniesPage />
                 </RequirePermission>
               ),
             },
@@ -52,7 +53,7 @@ export function createAppRoutes(): RouteObject[] {
               path: '/organization/locations',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.LOCATIONS_READ]}>
-                  <ModulePlannedPage title="Lieux & Établissements" sprint="Sprint 1" />
+                  <LocationsPage />
                 </RequirePermission>
               ),
             },
@@ -60,7 +61,7 @@ export function createAppRoutes(): RouteObject[] {
               path: '/organization/contract-types',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.CONTRACT_TYPES_READ]}>
-                  <ModulePlannedPage title="Types de contrat" sprint="Sprint 1" />
+                  <ContractTypesPage />
                 </RequirePermission>
               ),
             },
