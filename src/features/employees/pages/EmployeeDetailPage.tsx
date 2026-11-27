@@ -28,6 +28,8 @@ import {
   useDeactivateEmployeeMutation,
   useEmployeeDetailQuery,
 } from '../hooks/useEmployeesQueries';
+import { EmergencyContactsTab } from '../components/EmergencyContactsTab';
+import { PositionsTab } from '../components/PositionsTab';
 import { PRIVILEGED_ROLES } from '../schemas/employeeSchemas';
 
 function MaskedOrValue({ value }: { value: string | null | undefined }) {
@@ -101,6 +103,47 @@ function EmployeeProfileCards({
   );
 }
 
+function EmployeeHeaderActions({
+  employeeId,
+  isActive,
+  canListAll,
+  canWriteEmployee,
+  onToggleStatus,
+}: {
+  employeeId: string;
+  isActive: boolean;
+  canListAll: boolean;
+  canWriteEmployee: boolean;
+  onToggleStatus: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {canListAll && (
+        <Button variant="outline" asChild>
+          <Link to="/employees">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Annuaire
+          </Link>
+        </Button>
+      )}
+      {canWriteEmployee && (
+        <>
+          <Button variant="outline" asChild>
+            <Link to={`/employees/${employeeId}/edit`}>
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+              Modifier
+            </Link>
+          </Button>
+          <Button variant={isActive ? 'destructive' : 'primary'} onClick={onToggleStatus}>
+            <Power className="h-4 w-4" aria-hidden="true" />
+            {isActive ? 'Désactiver' : 'Réactiver'}
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function EmployeeDetailView({ employeeId }: { employeeId: string }) {
   const { user } = useAuth();
   const { can } = usePermission();
@@ -165,33 +208,13 @@ export function EmployeeDetailView({ employeeId }: { employeeId: string }) {
         title={`${employee.honorific} ${employee.firstName} ${employee.lastName}`}
         description={`${employee.email} · ${employee.slug}`}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {can(PERMISSIONS.EMPLOYEES_READ_ALL) && (
-              <Button variant="outline" asChild>
-                <Link to="/employees">
-                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                  Annuaire
-                </Link>
-              </Button>
-            )}
-            {canWriteEmployee && (
-              <>
-                <Button variant="outline" asChild>
-                  <Link to={`/employees/${employee.id}/edit`}>
-                    <Pencil className="h-4 w-4" aria-hidden="true" />
-                    Modifier
-                  </Link>
-                </Button>
-                <Button
-                  variant={employee.isActive ? 'destructive' : 'primary'}
-                  onClick={() => setStatusConfirmOpen(true)}
-                >
-                  <Power className="h-4 w-4" aria-hidden="true" />
-                  {employee.isActive ? 'Désactiver' : 'Réactiver'}
-                </Button>
-              </>
-            )}
-          </div>
+          <EmployeeHeaderActions
+            employeeId={employee.id}
+            isActive={employee.isActive}
+            canListAll={can(PERMISSIONS.EMPLOYEES_READ_ALL)}
+            canWriteEmployee={canWriteEmployee}
+            onToggleStatus={() => setStatusConfirmOpen(true)}
+          />
         }
       />
 
@@ -235,20 +258,18 @@ export function EmployeeDetailView({ employeeId }: { employeeId: string }) {
 
         {showEmergencyContacts && (
           <TabsContent value="emergency-contacts">
-            <Card>
-              <CardContent className="p-6 text-sm text-[var(--muted-foreground)]">
-                Contacts d&apos;urgence en cours de déploiement (F3.2).
-              </CardContent>
-            </Card>
+            <EmergencyContactsTab
+              employeeId={employee.id}
+              canWrite={
+                (isSelf && can(PERMISSIONS.EMERGENCY_CONTACTS_WRITE_SELF)) ||
+                can(PERMISSIONS.EMERGENCY_CONTACTS_WRITE_ALL)
+              }
+            />
           </TabsContent>
         )}
 
         <TabsContent value="positions">
-          <Card>
-            <CardContent className="p-6 text-sm text-[var(--muted-foreground)]">
-              Historique des postes en cours de déploiement (F3.2).
-            </CardContent>
-          </Card>
+          <PositionsTab employeeId={employee.id} canWrite={can(PERMISSIONS.POSITIONS_WRITE)} />
         </TabsContent>
       </Tabs>
 
