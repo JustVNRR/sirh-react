@@ -10,6 +10,7 @@ import { DashboardPage } from '@/features/dashboard';
 import { EmployeeDocumentsPage } from '@/features/employee-documents';
 import { EmployeeFormPage, EmployeesDirectoryPage } from '@/features/employees';
 import { MedicalVisitsPage } from '@/features/health';
+import { CommonDocumentsPage, WelcomeKitsPage } from '@/features/internal-life';
 import { NotificationsPage } from '@/features/notifications';
 import { CompaniesPage, ContractTypesPage, LocationsPage } from '@/features/organization';
 import { RolesPermissionsPage } from '@/features/roles';
@@ -209,7 +210,7 @@ export function createAppRoutes(): RouteObject[] {
               path: '/internal-life/documents',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.COMMON_DOCS_READ]}>
-                  <ModulePlannedPage title="Documents communs" sprint="Sprint 5" />
+                  <CommonDocumentsPage />
                 </RequirePermission>
               ),
             },
@@ -217,7 +218,7 @@ export function createAppRoutes(): RouteObject[] {
               path: '/internal-life/welcome-kits',
               element: (
                 <RequirePermission anyOf={[PERMISSIONS.WELCOME_KITS_READ]}>
-                  <ModulePlannedPage title="Kits d'accueil" sprint="Sprint 5" />
+                  <WelcomeKitsPage />
                 </RequirePermission>
               ),
             },
