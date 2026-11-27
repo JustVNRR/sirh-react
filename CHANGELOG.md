@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-27
+
+### Added
+
+- **Employees Directory & Lifecycle (`96a2cdb`)**: Added `/employees` directory with URL-synced multi-criteria server pagination, `/employees/new` and `/employees/:id/edit` forms (with `password` field, role anti-escalation for HR, and `409 Conflict` reload banner), `/employees/:id` 360° profile and `/me` My Space (with ABAC PII masking), and logical activate/deactivate flows.
+- **Emergency Contacts & Positions History (`00e5187`)**: Added `EmergencyContactsTab` (max 2 contacts enforced, at least 1 phone number, ABAC `Self`/`All` visibility) and `PositionsTab` (`Poste actuel` badge, client validation for `endAt >= startAt` and `managerId !== employeeId`, and `409 Conflict` handling on linked position deletion).
+- **Shared Tabs (`96a2cdb`)**: Added accessible Radix `Tabs` primitives in `src/shared/ui/`.
+
 ## [0.2.0] - 2026-11-27
 
 ### Added
